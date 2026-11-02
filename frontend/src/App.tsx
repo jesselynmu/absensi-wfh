@@ -1,6 +1,7 @@
 import { Navigate, Route, Routes } from 'react-router-dom';
+import { AppLayout } from './components/AppLayout';
 import { ProtectedRoute } from './components/ProtectedRoute';
-import { DashboardPage } from './pages/DashboardPage';
+import { AttendancePage } from './pages/AttendancePage';
 import { LoginPage } from './pages/LoginPage';
 
 export default function App() {
@@ -8,13 +9,14 @@ export default function App() {
     <Routes>
       <Route path="/login" element={<LoginPage />} />
       <Route
-        path="/"
         element={
           <ProtectedRoute>
-            <DashboardPage />
+            <AppLayout />
           </ProtectedRoute>
         }
-      />
+      >
+        <Route path="/" element={<AttendancePage />} />
+      </Route>
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
   );
