@@ -16,6 +16,7 @@ import { TypeOrmModule } from '@nestjs/typeorm';
         database: config.get<string>('DB_DATABASE', 'absensi_wfh'),
         autoLoadEntities: true,
         synchronize: false,
+        timezone: '+07:00',
       }),
     }),
   ],

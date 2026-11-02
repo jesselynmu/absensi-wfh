@@ -1,8 +1,14 @@
 import { NestFactory } from '@nestjs/core';
+import { MicroserviceOptions, Transport } from '@nestjs/microservices';
 import { AttendanceServiceModule } from './attendance-service.module';
 
 async function bootstrap() {
-  const app = await NestFactory.create(AttendanceServiceModule);
-  await app.listen(process.env.port ?? 3000);
+  const port = Number(process.env.ATTENDANCE_SERVICE_PORT ?? 3003);
+  const app = await NestFactory.createMicroservice<MicroserviceOptions>(
+    AttendanceServiceModule,
+    { transport: Transport.TCP, options: { host: '0.0.0.0', port } },
+  );
+  await app.listen();
+  console.log(`attendance-service listening on TCP port ${port}`);
 }
 bootstrap();

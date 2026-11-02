@@ -1,0 +1,82 @@
+import {
+  BadRequestException,
+  Body,
+  Controller,
+  Get,
+  Inject,
+  Post,
+  UploadedFile,
+  UseGuards,
+  UseInterceptors,
+} from '@nestjs/common';
+import { ClientProxy } from '@nestjs/microservices';
+import { FileInterceptor } from '@nestjs/platform-express';
+import { unlink } from 'fs/promises';
+import { diskStorage } from 'multer';
+import { extname, join } from 'path';
+import { CurrentUser } from '../auth/current-user.decorator';
+import { JwtAuthGuard } from '../auth/jwt-auth.guard';
+import type { JwtPayload } from '../auth/jwt-payload';
+import { sendToService } from '../common/send-to-service';
+
+export const UPLOAD_DIR = join(process.cwd(), 'uploads');
+
+@Controller('attendances')
+@UseGuards(JwtAuthGuard)
+export class AttendanceController {
+  constructor(@Inject('ATTENDANCE_SERVICE') private readonly client: ClientProxy) {}
+
+  @Post('check-in')
+  @UseInterceptors(
+    FileInterceptor('photo', {
+      storage: diskStorage({
+        destination: UPLOAD_DIR,
+        filename: (_req, file, cb) =>
+          cb(
+            null,
+            `${Date.now()}-${Math.round(Math.random() * 1e9)}${extname(file.originalname).toLowerCase()}`,
+          ),
+      }),
+      limits: { fileSize: 5 * 1024 * 1024 },
+      fileFilter: (_req, file, cb) => {
+        if (!file.mimetype.startsWith('image/')) {
+          return cb(new BadRequestException('File harus berupa gambar'), false);
+        }
+        cb(null, true);
+      },
+    }),
+  )
+  async checkIn(
+    @CurrentUser() user: JwtPayload,
+    @UploadedFile() photo: Express.Multer.File | undefined,
+    @Body('notes') notes?: string,
+  ) {
+    if (!photo) throw new BadRequestException('Foto bukti wajib diunggah');
+
+    try {
+      return await sendToService(this.client, { cmd: 'attendance.checkIn' }, {
+        employeeId: user.employeeId,
+        photoPath: `uploads/${photo.filename}`,
+        notes,
+      });
+    } catch (err) {
+      // Absen ditolak (misal sudah absen), hapus foto yang terlanjur tersimpan
+      await unlink(photo.path).catch(() => undefined);
+      throw err;
+    }
+  }
+
+  @Get('today')
+  today(@CurrentUser() user: JwtPayload) {
+    return sendToService(this.client, { cmd: 'attendance.today' }, {
+      employeeId: user.employeeId,
+    });
+  }
+
+  @Get('me')
+  mine(@CurrentUser() user: JwtPayload) {
+    return sendToService(this.client, { cmd: 'attendance.mine' }, {
+      employeeId: user.employeeId,
+    });
+  }
+}
