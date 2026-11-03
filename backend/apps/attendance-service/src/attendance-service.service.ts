@@ -1,7 +1,7 @@
 import { HttpStatus, Injectable } from '@nestjs/common';
 import { RpcException } from '@nestjs/microservices';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { Between, FindOptionsWhere, LessThanOrEqual, MoreThanOrEqual, Repository } from 'typeorm';
 import { Attendance } from './entities/attendance.entity';
 
 const todayInJakarta = () =>
@@ -57,5 +57,28 @@ export class AttendanceServiceService {
       order: { attendanceDate: 'DESC' },
       take: 30,
     });
+  }
+
+  findAll(filter: { startDate?: string; endDate?: string; employeeId?: number }) {
+    const where: FindOptionsWhere<Attendance> = {};
+    if (filter.employeeId) where.employeeId = filter.employeeId;
+
+    if (filter.startDate && filter.endDate) {
+      where.attendanceDate = Between(filter.startDate, filter.endDate);
+    } else if (filter.startDate) {
+      where.attendanceDate = MoreThanOrEqual(filter.startDate);
+    } else if (filter.endDate) {
+      where.attendanceDate = LessThanOrEqual(filter.endDate);
+    }
+
+    return this.repo.find({
+      where,
+      order: { attendanceDate: 'DESC', checkInTime: 'DESC' },
+      take: 500,
+    });
+  }
+
+  async countByEmployee(employeeId: number) {
+    return { count: await this.repo.count({ where: { employeeId } }) };
   }
 }

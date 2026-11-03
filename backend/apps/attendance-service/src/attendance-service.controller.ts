@@ -20,4 +20,14 @@ export class AttendanceServiceController {
   findMine(@Payload() data: { employeeId: number }) {
     return this.attendanceService.findMine(data.employeeId);
   }
+
+  @MessagePattern({ cmd: 'attendance.findAll' })
+  findAll(@Payload() filter: { startDate?: string; endDate?: string; employeeId?: number }) {
+    return this.attendanceService.findAll(filter);
+  }
+
+  @MessagePattern({ cmd: 'attendance.countByEmployee' })
+  countByEmployee(@Payload() data: { employeeId: number }) {
+    return this.attendanceService.countByEmployee(data.employeeId);
+  }
 }
