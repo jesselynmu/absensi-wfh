@@ -33,4 +33,11 @@ export class AuthServiceController {
   findAccounts(@Payload() data: { employeeIds: number[] }) {
     return this.authService.findAccounts(data.employeeIds);
   }
+
+  @MessagePattern({ cmd: 'auth.changePassword' })
+  changePassword(
+    @Payload() data: { userId: number; currentPassword: string; newPassword: string },
+  ) {
+    return this.authService.changePassword(data);
+  }
 }

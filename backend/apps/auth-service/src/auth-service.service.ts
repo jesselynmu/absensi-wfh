@@ -129,4 +129,30 @@ export class AuthServiceService {
     const users = await this.users.find({ where: { employeeId: In(employeeIds) } });
     return users.map((user) => this.toAccount(user));
   }
+
+  async changePassword(data: { userId: number; currentPassword: string; newPassword: string }) {
+    const user = await this.users.findOne({ where: { id: data.userId } });
+    if (!user) {
+      throw new RpcException({ statusCode: HttpStatus.NOT_FOUND, message: 'Akun tidak ditemukan' });
+    }
+
+    const valid = await bcrypt.compare(data.currentPassword, user.passwordHash);
+    if (!valid) {
+      throw new RpcException({
+        statusCode: HttpStatus.BAD_REQUEST,
+        message: 'Password lama yang Anda masukkan salah',
+      });
+    }
+
+    if (await bcrypt.compare(data.newPassword, user.passwordHash)) {
+      throw new RpcException({
+        statusCode: HttpStatus.BAD_REQUEST,
+        message: 'Password baru harus berbeda dari password lama',
+      });
+    }
+
+    user.passwordHash = await bcrypt.hash(data.newPassword, 10);
+    await this.users.save(user);
+    return { message: 'Password berhasil diubah' };
+  }
 }
