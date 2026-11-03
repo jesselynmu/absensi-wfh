@@ -1,15 +1,11 @@
 import { Controller } from '@nestjs/common';
 import { MessagePattern, Payload } from '@nestjs/microservices';
 import { AttendanceServiceService } from './attendance-service.service';
+import type { CheckInPayload } from './attendance-service.service';
 
 @Controller()
 export class AttendanceServiceController {
   constructor(private readonly attendanceService: AttendanceServiceService) {}
-
-  @MessagePattern({ cmd: 'attendance.checkIn' })
-  checkIn(@Payload() data: { employeeId: number; photoPath: string; notes?: string }) {
-    return this.attendanceService.checkIn(data);
-  }
 
   @MessagePattern({ cmd: 'attendance.today' })
   findToday(@Payload() data: { employeeId: number }) {
@@ -29,5 +25,10 @@ export class AttendanceServiceController {
   @MessagePattern({ cmd: 'attendance.countByEmployee' })
   countByEmployee(@Payload() data: { employeeId: number }) {
     return this.attendanceService.countByEmployee(data.employeeId);
+  }
+
+  @MessagePattern({ cmd: 'attendance.checkIn' })
+  checkIn(@Payload() data: CheckInPayload) {
+    return this.attendanceService.checkIn(data);
   }
 }

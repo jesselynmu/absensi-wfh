@@ -43,13 +43,16 @@ CREATE TABLE IF NOT EXISTS users (
 -- attendances: data absensi WFH (attendance-service)
 -- -----------------------------------------------------
 CREATE TABLE IF NOT EXISTS attendances (
-  id              INT AUTO_INCREMENT PRIMARY KEY,
-  employee_id     INT          NOT NULL,
-  attendance_date DATE         NOT NULL,
-  check_in_time   DATETIME     NOT NULL,
-  photo_path      VARCHAR(255) NOT NULL,
-  notes           VARCHAR(255),
-  created_at      DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  id               INT AUTO_INCREMENT PRIMARY KEY,
+  employee_id      INT           NOT NULL,
+  attendance_date  DATE          NOT NULL,
+  check_in_time    DATETIME      NOT NULL,
+  photo_path       VARCHAR(255)  NOT NULL,
+  latitude         DECIMAL(10,7) NULL,
+  longitude        DECIMAL(10,7) NULL,
+  location_address VARCHAR(255)  NULL,
+  notes            VARCHAR(255),
+  created_at       DATETIME      NOT NULL DEFAULT CURRENT_TIMESTAMP,
   CONSTRAINT fk_attendances_employee FOREIGN KEY (employee_id)
     REFERENCES employees(id) ON DELETE CASCADE,
   CONSTRAINT uq_attendance_per_day UNIQUE (employee_id, attendance_date)

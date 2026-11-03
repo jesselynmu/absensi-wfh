@@ -22,6 +22,7 @@ import { sendToService } from '../common/send-to-service';
 import { Roles } from '../auth/roles.decorator';
 import { attachEmployees } from '../common/attach-employees';
 import type { AttendanceRecord } from '../common/types';
+import { CheckInDto } from './dto/check-in.dto';
 
 export const UPLOAD_DIR = join(process.cwd(), 'uploads');
 
@@ -53,10 +54,11 @@ export class AttendanceController {
       },
     }),
   )
+
   async checkIn(
     @CurrentUser() user: JwtPayload,
     @UploadedFile() photo: Express.Multer.File | undefined,
-    @Body('notes') notes?: string,
+    @Body() body: CheckInDto,
   ) {
     if (!photo) throw new BadRequestException('Foto bukti wajib diunggah');
 
@@ -64,10 +66,12 @@ export class AttendanceController {
       return await sendToService(this.client, { cmd: 'attendance.checkIn' }, {
         employeeId: user.employeeId,
         photoPath: `uploads/${photo.filename}`,
-        notes,
+        notes: body.notes,
+        latitude: body.latitude ? Number(body.latitude) : undefined,
+        longitude: body.longitude ? Number(body.longitude) : undefined,
+        locationAddress: body.locationAddress,
       });
     } catch (err) {
-      // Absen ditolak (misal sudah absen), hapus foto yang terlanjur tersimpan
       await unlink(photo.path).catch(() => undefined);
       throw err;
     }

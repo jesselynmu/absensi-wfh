@@ -13,13 +13,22 @@ const alreadyCheckedIn = () =>
     message: 'Anda sudah melakukan absensi hari ini',
   });
 
+export interface CheckInPayload {
+  employeeId: number;
+  photoPath: string;
+  notes?: string;
+  latitude?: number;
+  longitude?: number;
+  locationAddress?: string;
+}
+
 @Injectable()
 export class AttendanceServiceService {
   constructor(
     @InjectRepository(Attendance) private readonly repo: Repository<Attendance>,
   ) {}
 
-  async checkIn(data: { employeeId: number; photoPath: string; notes?: string }) {
+  async checkIn(data: CheckInPayload) {
     const today = todayInJakarta();
 
     const existing = await this.repo.findOne({
@@ -35,10 +44,12 @@ export class AttendanceServiceService {
           checkInTime: new Date(),
           photoPath: data.photoPath,
           notes: data.notes?.trim() || null,
+          latitude: data.latitude ?? null,
+          longitude: data.longitude ?? null,
+          locationAddress: data.locationAddress?.trim() || null,
         }),
       );
     } catch (err: any) {
-      // Jaga-jaga kalau dua request masuk bersamaan
       if (err?.code === 'ER_DUP_ENTRY') throw alreadyCheckedIn();
       throw err;
     }
