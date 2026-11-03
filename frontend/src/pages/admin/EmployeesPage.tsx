@@ -1,14 +1,15 @@
-import { Pencil, Plus, Search, Trash2 } from 'lucide-react';
+import { KeyRound, Pencil, Plus, Search, Trash2 } from 'lucide-react';
 import { useCallback, useEffect, useState } from 'react';
 import { api, getErrorMessage } from '../../api/client';
 import { Alert } from '../../components/Alert';
 import { Avatar } from '../../components/Avatar';
 import { Badge } from '../../components/Badge';
 import { Button } from '../../components/Button';
+import { CredentialsModal } from '../../components/CredentialsModal';
 import { Modal } from '../../components/Modal';
 import { PageHeader } from '../../components/PageHeader';
 import { useAuth } from '../../context/AuthContext';
-import type { Employee } from '../../types/employee';
+import type { Credentials, Employee } from '../../types/employee';
 import { EmployeeFormModal } from './EmployeeFormModal';
 
 export function EmployeesPage() {
@@ -24,8 +25,11 @@ export function EmployeesPage() {
   const [editing, setEditing] = useState<Employee | null>(null);
 
   const [deleting, setDeleting] = useState<Employee | null>(null);
-  const [deleteError, setDeleteError] = useState('');
-  const [deleteLoading, setDeleteLoading] = useState(false);
+  const [resetting, setResetting] = useState<Employee | null>(null);
+  const [actionError, setActionError] = useState('');
+  const [actionLoading, setActionLoading] = useState(false);
+
+  const [credentials, setCredentials] = useState<{ title: string; data: Credentials } | null>(null);
 
   const loadEmployees = useCallback(async () => {
     setLoading(true);
@@ -45,7 +49,6 @@ export function EmployeesPage() {
     }
   }, [search, status]);
 
-  // Tunggu 300ms setelah user berhenti mengetik sebelum mencari
   useEffect(() => {
     const timer = setTimeout(() => void loadEmployees(), 300);
     return () => clearTimeout(timer);
@@ -63,30 +66,58 @@ export function EmployeesPage() {
 
   const closeForm = useCallback(() => setFormOpen(false), []);
 
-  const handleSaved = (message: string) => {
+  const handleSaved = (message: string, newCredentials?: Credentials) => {
     setFormOpen(false);
     setSuccess(message);
+    if (newCredentials) {
+      setCredentials({ title: 'Akun Berhasil Dibuat', data: newCredentials });
+    }
     void loadEmployees();
   };
 
-  const closeDelete = useCallback(() => {
+  const closeAction = useCallback(() => {
     setDeleting(null);
-    setDeleteError('');
+    setResetting(null);
+    setActionError('');
   }, []);
 
   const handleDelete = async () => {
     if (!deleting) return;
-    setDeleteLoading(true);
-    setDeleteError('');
+    setActionLoading(true);
+    setActionError('');
     try {
       await api.delete(`/employees/${deleting.id}`);
       setSuccess(`${deleting.fullName} berhasil dihapus`);
       setDeleting(null);
       void loadEmployees();
     } catch (err) {
-      setDeleteError(getErrorMessage(err));
+      setActionError(getErrorMessage(err));
     } finally {
-      setDeleteLoading(false);
+      setActionLoading(false);
+    }
+  };
+
+  const handleReset = async () => {
+    if (!resetting) return;
+    setActionLoading(true);
+    setActionError('');
+    try {
+      const { data } = await api.post<{ temporaryPassword: string }>(
+        `/employees/${resetting.id}/reset-password`,
+      );
+      setCredentials({
+        title: 'Password Berhasil Direset',
+        data: {
+          fullName: resetting.fullName,
+          email: resetting.email,
+          password: data.temporaryPassword,
+        },
+      });
+      setResetting(null);
+    } catch (err) {
+      setActionError(getErrorMessage(err));
+    } finally {
+      setActionLoading(false);
     }
   };
 
@@ -113,7 +144,10 @@ export function EmployeesPage() {
       <section className="rounded-xl bg-white shadow-sm">
         <div className="flex flex-col gap-3 border-b border-gray-100 p-4 sm:flex-row">
           <div className="relative flex-1">
-            <Search size={18} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+            <Search
+              size={18}
+              className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"
+            />
             <input
               value={search}
               onChange={(e) => setSearch(e.target.value)}
@@ -148,7 +182,9 @@ export function EmployeesPage() {
             <tbody className="divide-y divide-gray-100">
               {loading && employees.length === 0 ? (
                 <tr>
-                  <td colSpan={6} className="px-4 py-8 text-center text-gray-500">Memuat data...</td>
+                  <td colSpan={6} className="px-4 py-8 text-center text-gray-500">
+                    Memuat data...
+                  </td>
                 </tr>
               ) : employees.length === 0 ? (
                 <tr>
@@ -157,56 +193,72 @@ export function EmployeesPage() {
                   </td>
                 </tr>
               ) : (
-                employees.map((emp) => (
-                  <tr key={emp.id} className="hover:bg-gray-50">
-                    <td className="px-4 py-3">
-                      <div className="flex items-center gap-3">
-                        <Avatar name={emp.fullName} />
-                        <div>
-                          <p className="font-medium text-gray-900">{emp.fullName}</p>
-                          <p className="text-xs text-gray-500">{emp.employeeCode}</p>
+                employees.map((emp) => {
+                  const isSelf = emp.id === user?.employeeId;
+                  return (
+                    <tr key={emp.id} className="hover:bg-gray-50">
+                      <td className="px-4 py-3">
+                        <div className="flex items-center gap-3">
+                          <Avatar name={emp.fullName} />
+                          <div>
+                            <p className="font-medium text-gray-900">{emp.fullName}</p>
+                            <p className="text-xs text-gray-500">{emp.employeeCode}</p>
+                          </div>
                         </div>
-                      </div>
-                    </td>
-                    <td className="px-4 py-3 text-gray-600">{emp.email}</td>
-                    <td className="px-4 py-3 text-gray-600">
-                      <p>{emp.department ?? '-'}</p>
-                      <p className="text-xs text-gray-400">{emp.position ?? ''}</p>
-                    </td>
-                    <td className="px-4 py-3">
-                      <Badge tone={emp.role === 'ADMIN' ? 'brand' : 'blue'}>
-                        {emp.role === 'ADMIN' ? 'Admin HRD' : 'Karyawan'}
-                      </Badge>
-                    </td>
-                    <td className="px-4 py-3">
-                      <Badge tone={emp.isActive ? 'green' : 'gray'}>
-                        {emp.isActive ? 'Aktif' : 'Nonaktif'}
-                      </Badge>
-                    </td>
-                    <td className="px-4 py-3">
-                      <div className="flex justify-end gap-1">
-                        <button
-                          type="button"
-                          onClick={() => openEdit(emp)}
-                          aria-label={`Edit ${emp.fullName}`}
-                          className="rounded-lg p-2 text-gray-500 hover:bg-gray-100 hover:text-gray-900"
-                        >
-                          <Pencil size={16} />
-                        </button>
-                        {emp.id !== user?.employeeId && (
+                      </td>
+                      <td className="px-4 py-3 text-gray-600">{emp.email}</td>
+                      <td className="px-4 py-3 text-gray-600">
+                        <p>{emp.department ?? '-'}</p>
+                        <p className="text-xs text-gray-400">{emp.position ?? ''}</p>
+                      </td>
+                      <td className="px-4 py-3">
+                        <Badge tone={emp.role === 'ADMIN' ? 'brand' : 'blue'}>
+                          {emp.role === 'ADMIN' ? 'Admin HRD' : 'Karyawan'}
+                        </Badge>
+                      </td>
+                      <td className="px-4 py-3">
+                        <Badge tone={emp.isActive ? 'green' : 'gray'}>
+                          {emp.isActive ? 'Aktif' : 'Nonaktif'}
+                        </Badge>
+                      </td>
+                      <td className="px-4 py-3">
+                        <div className="flex justify-end gap-1">
                           <button
                             type="button"
-                            onClick={() => setDeleting(emp)}
-                            aria-label={`Hapus ${emp.fullName}`}
-                            className="rounded-lg p-2 text-gray-500 hover:bg-brand-50 hover:text-brand-700"
+                            onClick={() => openEdit(emp)}
+                            title="Edit data"
+                            aria-label={`Edit ${emp.fullName}`}
+                            className="rounded-lg p-2 text-gray-500 hover:bg-gray-100 hover:text-gray-900"
                           >
-                            <Trash2 size={16} />
+                            <Pencil size={16} />
                           </button>
-                        )}
-                      </div>
-                    </td>
-                  </tr>
-                ))
+                          {!isSelf && (
+                            <>
+                              <button
+                                type="button"
+                                onClick={() => setResetting(emp)}
+                                title="Reset password"
+                                aria-label={`Reset password ${emp.fullName}`}
+                                className="rounded-lg p-2 text-gray-500 hover:bg-amber-50 hover:text-amber-700"
+                              >
+                                <KeyRound size={16} />
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => setDeleting(emp)}
+                                title="Hapus"
+                                aria-label={`Hapus ${emp.fullName}`}
+                                className="rounded-lg p-2 text-gray-500 hover:bg-brand-50 hover:text-brand-700"
+                              >
+                                <Trash2 size={16} />
+                              </button>
+                            </>
+                          )}
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })
               )}
             </tbody>
           </table>
@@ -218,21 +270,57 @@ export function EmployeesPage() {
       )}
 
       {deleting && (
-        <Modal title="Hapus Karyawan" onClose={closeDelete}>
+        <Modal title="Hapus Karyawan" onClose={closeAction}>
           <p className="text-gray-600">
-            Yakin ingin menghapus <span className="font-semibold text-gray-900">{deleting.fullName}</span>?
-            Akun login-nya juga akan ikut terhapus.
+            Yakin ingin menghapus{' '}
+            <span className="font-semibold text-gray-900">{deleting.fullName}</span>? Akun
+            login-nya juga akan ikut terhapus.
           </p>
-          {deleteError && <div className="mt-4"><Alert>{deleteError}</Alert></div>}
+          {actionError && (
+            <div className="mt-4">
+              <Alert>{actionError}</Alert>
+            </div>
+          )}
           <div className="mt-6 flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
-            <Button type="button" variant="secondary" onClick={closeDelete}>
+            <Button type="button" variant="secondary" onClick={closeAction}>
               Batal
             </Button>
-            <Button type="button" loading={deleteLoading} onClick={() => void handleDelete()}>
+            <Button type="button" loading={actionLoading} onClick={() => void handleDelete()}>
               Ya, Hapus
             </Button>
           </div>
         </Modal>
+      )}
+
+      {resetting && (
+        <Modal title="Reset Password" onClose={closeAction}>
+          <p className="text-gray-600">
+            Buat password baru untuk{' '}
+            <span className="font-semibold text-gray-900">{resetting.fullName}</span>? Password
+            lama tidak akan bisa dipakai lagi.
+          </p>
+          {actionError && (
+            <div className="mt-4">
+              <Alert>{actionError}</Alert>
+            </div>
+          )}
+          <div className="mt-6 flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
+            <Button type="button" variant="secondary" onClick={closeAction}>
+              Batal
+            </Button>
+            <Button type="button" loading={actionLoading} onClick={() => void handleReset()}>
+              Ya, Reset Password
+            </Button>
+          </div>
+        </Modal>
+      )}
+
+      {credentials && (
+        <CredentialsModal
+          title={credentials.title}
+          credentials={credentials.data}
+          onClose={() => setCredentials(null)}
+        />
       )}
     </div>
   );

@@ -7,12 +7,12 @@ import { SelectField } from '../../components/SelectField';
 import { TextField } from '../../components/TextField';
 import { useAuth } from '../../context/AuthContext';
 import type { UserRole } from '../../types/auth';
-import type { Employee } from '../../types/employee';
+import type { Credentials, Employee } from '../../types/employee';
 
 interface EmployeeFormModalProps {
   employee: Employee | null;
   onClose: () => void;
-  onSaved: (message: string) => void;
+  onSaved: (message: string, credentials?: Credentials) => void;
 }
 
 const toNullable = (value: string) => (value.trim() === '' ? null : value.trim());
@@ -23,7 +23,6 @@ export function EmployeeFormModal({ employee, onClose, onSaved }: EmployeeFormMo
   const isSelf = isEdit && employee.id === user?.employeeId;
 
   const [form, setForm] = useState({
-    employeeCode: employee?.employeeCode ?? '',
     fullName: employee?.fullName ?? '',
     email: employee?.email ?? '',
     phone: employee?.phone ?? '',
@@ -32,7 +31,6 @@ export function EmployeeFormModal({ employee, onClose, onSaved }: EmployeeFormMo
     joinDate: employee?.joinDate ?? '',
     role: (employee?.role ?? 'EMPLOYEE') as UserRole,
     isActive: employee?.isActive ?? true,
-    password: '',
   });
   const [error, setError] = useState('');
   const [saving, setSaving] = useState(false);
@@ -45,7 +43,6 @@ export function EmployeeFormModal({ employee, onClose, onSaved }: EmployeeFormMo
     setSaving(true);
 
     const payload = {
-      employeeCode: form.employeeCode.trim(),
       fullName: form.fullName.trim(),
       email: form.email.trim(),
       phone: toNullable(form.phone),
@@ -57,15 +54,18 @@ export function EmployeeFormModal({ employee, onClose, onSaved }: EmployeeFormMo
 
     try {
       if (isEdit) {
-        await api.patch(`/employees/${employee.id}`, {
-          ...payload,
-          isActive: form.isActive,
-          ...(form.password ? { password: form.password } : {}),
-        });
+        await api.patch(`/employees/${employee.id}`, { ...payload, isActive: form.isActive });
         onSaved('Data karyawan berhasil diperbarui');
       } else {
-        await api.post('/employees', { ...payload, password: form.password });
-        onSaved('Karyawan baru berhasil ditambahkan beserta akun login-nya');
+        const { data } = await api.post<Employee & { temporaryPassword: string }>(
+          '/employees',
+          payload,
+        );
+        onSaved(`${data.fullName} (${data.employeeCode}) berhasil ditambahkan`, {
+          fullName: data.fullName,
+          email: data.email,
+          password: data.temporaryPassword,
+        });
       }
     } catch (err) {
       setError(getErrorMessage(err));
@@ -91,11 +91,9 @@ export function EmployeeFormModal({ employee, onClose, onSaved }: EmployeeFormMo
             <TextField
               label="Kode Karyawan"
               name="employeeCode"
-              value={form.employeeCode}
-              onChange={(e) => update('employeeCode', e.target.value)}
-              placeholder="EMP002"
-              maxLength={20}
-              required
+              value={employee?.employeeCode ?? ''}
+              placeholder="Dibuat otomatis oleh sistem"
+              disabled
             />
             <TextField
               label="Nama Lengkap"
@@ -176,23 +174,14 @@ export function EmployeeFormModal({ employee, onClose, onSaved }: EmployeeFormMo
                 { value: 'ADMIN', label: 'Admin HRD' },
               ]}
             />
-            <TextField
-              label={isEdit ? 'Password Baru' : 'Password Awal'}
-              name="password"
-              type="password"
-              value={form.password}
-              onChange={(e) => update('password', e.target.value)}
-              placeholder={isEdit ? 'Kosongkan jika tidak diubah' : 'Minimal 6 karakter'}
-              minLength={6}
-              required={!isEdit}
-              autoComplete="new-password"
-            />
           </div>
-          {isSelf && (
-            <p className="mt-2 text-xs text-gray-500">
-              Role dan status akun Anda sendiri tidak dapat diubah.
-            </p>
-          )}
+          <p className="mt-2 text-xs text-gray-500">
+            {isSelf
+              ? 'Role dan status akun Anda sendiri tidak dapat diubah.'
+              : isEdit
+                ? 'Untuk mengganti password karyawan, gunakan tombol Reset Password di tabel.'
+                : 'Password awal akan dibuat otomatis dan ditampilkan setelah data disimpan.'}
+          </p>
         </div>
 
         {error && <Alert>{error}</Alert>}

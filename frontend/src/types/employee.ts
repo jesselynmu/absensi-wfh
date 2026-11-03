@@ -12,3 +12,9 @@ export interface Employee {
   isActive: boolean;
   role: UserRole | null;
 }
+
+export interface Credentials {
+  fullName: string;
+  email: string;
+  password: string;
+}

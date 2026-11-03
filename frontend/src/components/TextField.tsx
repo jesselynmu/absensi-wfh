@@ -14,7 +14,7 @@ export function TextField({ label, error, id, className = '', ...props }: TextFi
       </label>
       <input
         id={inputId}
-        className={`rounded-lg border px-3 py-2.5 text-base outline-none focus:ring-2 focus:ring-blue-600 ${
+        className={`rounded-lg border px-3 py-2.5 text-base outline-none focus:ring-2 focus:ring-brand-400 disabled:cursor-not-allowed disabled:bg-gray-100 disabled:text-gray-500 ${
           error ? 'border-red-600' : 'border-gray-300'
         } ${className}`}
         {...props}
