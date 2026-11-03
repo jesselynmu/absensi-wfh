@@ -5,6 +5,7 @@ import { LiveClock } from '../components/LiveClock';
 import { PhotoPicker } from '../components/PhotoPicker';
 import type { Attendance } from '../types/attendance';
 import { fileUrl, formatDate, formatTime } from '../utils/format';
+import { PageHeader } from '../components/PageHeader';
 
 export function AttendancePage() {
   const [today, setToday] = useState<Attendance | null>(null);
@@ -54,6 +55,7 @@ export function AttendancePage() {
 
   return (
     <div className="space-y-6">
+      <PageHeader title="Absensi Saya" description="Catat kehadiran WFH Anda setiap hari." />
       <section className="rounded-xl bg-white p-6 shadow-sm">
         <div className="flex flex-col gap-6 lg:flex-row">
           <div className="lg:w-1/2">
