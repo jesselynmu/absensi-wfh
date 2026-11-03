@@ -14,7 +14,7 @@ const mapDbError = (err: any) =>
   err?.code === 'ER_DUP_ENTRY'
     ? new RpcException({
         statusCode: HttpStatus.CONFLICT,
-        message: 'Kode karyawan atau email sudah digunakan',
+        message: 'Email sudah digunakan oleh karyawan lain',
       })
     : err;
 
@@ -60,24 +60,43 @@ export class EmployeeServiceService {
     return { total, active };
   }
 
+  private async generateEmployeeCode() {
+    const [last] = await this.repo.find({ order: { id: 'DESC' }, take: 1 });
+    const lastNumber = Number(last?.employeeCode.match(/(\d+)$/)?.[1] ?? 0);
+    return `EMP${String(lastNumber + 1).padStart(3, '0')}`;
+  }
+
   async create(data: Partial<Employee>) {
-    try {
-      return await this.repo.save(this.repo.create({ ...data, isActive: true }));
-    } catch (err) {
-      throw mapDbError(err);
+    // Dicoba ulang kalau kebetulan dua admin menambah karyawan di detik yang sama
+    for (let attempt = 0; attempt < 3; attempt++) {
+      const employeeCode = await this.generateEmployeeCode();
+      try {
+        return await this.repo.save(
+          this.repo.create({ ...data, employeeCode, isActive: true }),
+        );
+      } catch (err: any) {
+        const codeClash =
+          err?.code === 'ER_DUP_ENTRY' && String(err?.sqlMessage).includes('employee_code');
+        if (!codeClash) throw mapDbError(err);
+      }
     }
+    throw new RpcException({
+      statusCode: HttpStatus.CONFLICT,
+      message: 'Gagal membuat kode karyawan, silakan coba lagi',
+    });
   }
 
   async update(id: number, changes: Partial<Employee>) {
     const employee = await this.findOne(id);
-    Object.assign(employee, changes);
+    // Kode karyawan dikunci: apa pun yang dikirim, nilai lama dipertahankan
+    Object.assign(employee, { ...changes, employeeCode: employee.employeeCode });
     try {
       return await this.repo.save(employee);
     } catch (err) {
       throw mapDbError(err);
     }
   }
-
+  
   async remove(id: number) {
     const result = await this.repo.delete(id);
     if (!result.affected) throw notFound();

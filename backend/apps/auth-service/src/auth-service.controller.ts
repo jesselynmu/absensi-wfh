@@ -13,16 +13,20 @@ export class AuthServiceController {
   }
 
   @MessagePattern({ cmd: 'auth.createAccount' })
-  createAccount(@Payload() data: { employeeId: number; email: string; password: string; role: UserRole }) {
+  createAccount(@Payload() data: { employeeId: number; email: string; role: UserRole }) {
     return this.authService.createAccount(data);
   }
 
   @MessagePattern({ cmd: 'auth.updateAccount' })
   updateAccount(
-    @Payload()
-    data: { employeeId: number; email?: string; role?: UserRole; isActive?: boolean; password?: string },
+    @Payload() data: { employeeId: number; email?: string; role?: UserRole; isActive?: boolean },
   ) {
     return this.authService.updateAccount(data);
+  }
+
+  @MessagePattern({ cmd: 'auth.resetPassword' })
+  resetPassword(@Payload() data: { employeeId: number }) {
+    return this.authService.resetPassword(data.employeeId);
   }
 
   @MessagePattern({ cmd: 'auth.findAccounts' })

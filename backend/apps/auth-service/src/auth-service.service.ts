@@ -5,6 +5,12 @@ import { InjectRepository } from '@nestjs/typeorm';
 import * as bcrypt from 'bcryptjs';
 import { In, Repository } from 'typeorm';
 import { User, UserRole } from './entities/user.entity';
+import { randomInt } from 'crypto';
+
+const PASSWORD_CHARS = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz23456789';
+
+const generatePassword = (length = 10) =>
+  Array.from({ length }, () => PASSWORD_CHARS[randomInt(PASSWORD_CHARS.length)]).join('');
 
 @Injectable()
 export class AuthServiceService {
@@ -63,22 +69,18 @@ export class AuthServiceService {
       : err;
   }
 
-  async createAccount(data: {
-    employeeId: number;
-    email: string;
-    password: string;
-    role: UserRole;
-  }) {
+  async createAccount(data: { employeeId: number; email: string; role: UserRole }) {
+    const temporaryPassword = generatePassword();
     try {
       const user = await this.users.save(
         this.users.create({
           employeeId: data.employeeId,
           email: data.email,
           role: data.role,
-          passwordHash: await bcrypt.hash(data.password, 10),
+          passwordHash: await bcrypt.hash(temporaryPassword, 10),
         }),
       );
-      return this.toAccount(user);
+      return { ...this.toAccount(user), temporaryPassword };
     } catch (err) {
       throw this.mapDbError(err);
     }
@@ -89,26 +91,37 @@ export class AuthServiceService {
     email?: string;
     role?: UserRole;
     isActive?: boolean;
-    password?: string;
   }) {
-    const user = await this.users.findOne({ where: { employeeId: data.employeeId } });
-    if (!user) {
-      throw new RpcException({
-        statusCode: HttpStatus.NOT_FOUND,
-        message: 'Akun karyawan tidak ditemukan',
-      });
-    }
+    const user = await this.findByEmployeeId(data.employeeId);
 
     if (data.email) user.email = data.email;
     if (data.role) user.role = data.role;
     if (typeof data.isActive === 'boolean') user.isActive = data.isActive;
-    if (data.password) user.passwordHash = await bcrypt.hash(data.password, 10);
 
     try {
       return this.toAccount(await this.users.save(user));
     } catch (err) {
       throw this.mapDbError(err);
     }
+  }
+
+  async resetPassword(employeeId: number) {
+    const user = await this.findByEmployeeId(employeeId);
+    const temporaryPassword = generatePassword();
+    user.passwordHash = await bcrypt.hash(temporaryPassword, 10);
+    await this.users.save(user);
+    return { temporaryPassword };
+  }
+
+  private async findByEmployeeId(employeeId: number) {
+    const user = await this.users.findOne({ where: { employeeId } });
+    if (!user) {
+      throw new RpcException({
+        statusCode: HttpStatus.NOT_FOUND,
+        message: 'Akun karyawan tidak ditemukan',
+      });
+    }
+    return user;
   }
 
   async findAccounts(employeeIds: number[]) {

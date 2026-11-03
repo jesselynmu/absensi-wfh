@@ -5,6 +5,7 @@ import {
   Controller,
   Delete,
   Get,
+  HttpCode,
   Inject,
   Param,
   ParseIntPipe,
@@ -80,7 +81,7 @@ export class EmployeesController {
   @Post()
   @Roles('ADMIN')
   async create(@Body() dto: CreateEmployeeDto) {
-    const { password, role, ...employeeData } = dto;
+    const { role, ...employeeData } = dto;
 
     const employee = await sendToService<EmployeeRecord>(
       this.employees,
@@ -89,20 +90,18 @@ export class EmployeesController {
     );
 
     try {
-      await sendToService(this.auth, { cmd: 'auth.createAccount' }, {
-        employeeId: employee.id,
-        email: employee.email,
-        password,
-        role,
-      });
+      const account = await sendToService<{ temporaryPassword: string }>(
+        this.auth,
+        { cmd: 'auth.createAccount' },
+        { employeeId: employee.id, email: employee.email, role },
+      );
+      // Password sementara hanya dikirim sekali, di respons ini saja
+      return { ...employee, role, temporaryPassword: account.temporaryPassword };
     } catch (err) {
-      // Pembuatan akun gagal: batalkan data karyawan supaya tidak setengah jadi
       await sendToService(this.employees, { cmd: 'employee.remove' }, { id: employee.id })
         .catch(() => undefined);
       throw err;
     }
-
-    return { ...employee, role };
   }
 
   @Patch(':id')
@@ -119,7 +118,7 @@ export class EmployeesController {
       );
     }
 
-    const { password, role, ...changes } = dto;
+    const { role, ...changes } = dto;
 
     const employee = await sendToService<EmployeeRecord>(
       this.employees,
@@ -132,11 +131,21 @@ export class EmployeesController {
       email: employee.email,
       isActive: employee.isActive,
       role,
-      password,
     });
 
     const [result] = await this.withRoles([employee]);
     return result;
+  }
+
+  @Post(':id/reset-password')
+  @Roles('ADMIN')
+  @HttpCode(200)
+  resetPassword(@Param('id', ParseIntPipe) id: number) {
+    return sendToService<{ temporaryPassword: string }>(
+      this.auth,
+      { cmd: 'auth.resetPassword' },
+      { employeeId: id },
+    );
   }
 
   @Delete(':id')

@@ -6,16 +6,10 @@ import {
   IsNotEmpty,
   IsOptional,
   MaxLength,
-  MinLength,
 } from 'class-validator';
 import type { UserRole } from '../../auth/jwt-payload';
 
 export class UpdateEmployeeDto {
-  @IsOptional()
-  @IsNotEmpty({ message: 'Kode karyawan tidak boleh kosong' })
-  @MaxLength(20)
-  employeeCode?: string;
-
   @IsOptional()
   @IsNotEmpty({ message: 'Nama lengkap tidak boleh kosong' })
   @MaxLength(100)
@@ -48,8 +42,4 @@ export class UpdateEmployeeDto {
   @IsOptional()
   @IsIn(['ADMIN', 'EMPLOYEE'], { message: 'Role tidak valid' })
   role?: UserRole;
-
-  @IsOptional()
-  @MinLength(6, { message: 'Password minimal 6 karakter' })
-  password?: string;
 }
