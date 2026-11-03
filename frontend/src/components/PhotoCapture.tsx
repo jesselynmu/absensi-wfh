@@ -1,6 +1,6 @@
-import { Camera, ImageUp, RefreshCw, SwitchCamera, X } from 'lucide-react';
+import { Camera, RefreshCw, SwitchCamera, X } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { imageFileToWatermarked, videoToWatermarked } from '../utils/watermark';
+import { videoToWatermarked } from '../utils/watermark';
 import { Button } from './Button';
 
 interface PhotoCaptureProps {
@@ -13,12 +13,9 @@ interface PhotoCaptureProps {
 type CameraState = 'idle' | 'starting' | 'live';
 type Facing = 'user' | 'environment';
 
-const cameraSupported = () => !!navigator.mediaDevices?.getUserMedia;
-
 export function PhotoCapture({ file, onChange, getWatermarkLines, disabled }: PhotoCaptureProps) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
-  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [state, setState] = useState<CameraState>('idle');
   const [facing, setFacing] = useState<Facing>('user');
@@ -26,6 +23,7 @@ export function PhotoCapture({ file, onChange, getWatermarkLines, disabled }: Ph
   const [processing, setProcessing] = useState(false);
   const [message, setMessage] = useState('');
 
+  const supported = !!navigator.mediaDevices?.getUserMedia;
   const preview = useMemo(() => (file ? URL.createObjectURL(file) : null), [file]);
 
   useEffect(() => {
@@ -43,10 +41,6 @@ export function PhotoCapture({ file, onChange, getWatermarkLines, disabled }: Ph
   useEffect(() => stopCamera, [stopCamera]);
 
   const startCamera = async (mode: Facing = facing) => {
-    if (!cameraSupported()) {
-      fileInputRef.current?.click();
-      return;
-    }
     stopCamera();
     setMessage('');
     setState('starting');
@@ -68,10 +62,10 @@ export function PhotoCapture({ file, onChange, getWatermarkLines, disabled }: Ph
       const name = err instanceof DOMException ? err.name : '';
       setMessage(
         name === 'NotAllowedError'
-          ? 'Izin kamera ditolak. Izinkan akses kamera di browser, atau unggah foto secara manual.'
+          ? 'Izin kamera ditolak. Klik ikon gembok di address bar, izinkan Kamera, lalu coba lagi.'
           : name === 'NotFoundError'
-            ? 'Kamera tidak ditemukan di perangkat ini. Silakan unggah foto secara manual.'
-            : 'Kamera tidak dapat dibuka. Coba lagi atau unggah foto secara manual.',
+            ? 'Kamera tidak ditemukan di perangkat ini.'
+            : 'Kamera tidak dapat dibuka. Tutup aplikasi lain yang sedang memakai kamera, lalu coba lagi.',
       );
       setState('idle');
     }
@@ -97,19 +91,6 @@ export function PhotoCapture({ file, onChange, getWatermarkLines, disabled }: Ph
     }
   };
 
-  const handleFile = async (selected?: File) => {
-    if (!selected) return;
-    setProcessing(true);
-    setMessage('');
-    try {
-      onChange(await imageFileToWatermarked(selected, getWatermarkLines()));
-    } catch {
-      setMessage('Gagal memproses foto, coba gunakan foto lain.');
-    } finally {
-      setProcessing(false);
-    }
-  };
-
   const retake = () => {
     onChange(null);
     void startCamera();
@@ -119,18 +100,6 @@ export function PhotoCapture({ file, onChange, getWatermarkLines, disabled }: Ph
 
   return (
     <div className="space-y-3">
-      <input
-        ref={fileInputRef}
-        type="file"
-        accept="image/*"
-        capture="user"
-        className="hidden"
-        onChange={(e) => {
-          void handleFile(e.target.files?.[0]);
-          e.target.value = '';
-        }}
-      />
-
       <div
         className={`relative aspect-[4/3] w-full overflow-hidden rounded-xl ${
           preview || showCamera ? 'bg-gray-900' : 'border-2 border-dashed border-brand-300 bg-brand-50'
@@ -160,24 +129,24 @@ export function PhotoCapture({ file, onChange, getWatermarkLines, disabled }: Ph
         {!preview && state === 'idle' && (
           <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 p-6 text-center">
             <Camera size={40} className="text-brand-500" />
-            <div>
-              <p className="font-semibold text-brand-700">Ambil foto bukti WFH</p>
-              <p className="text-sm text-brand-600">
-                Jam, tanggal, dan lokasi akan tercetak otomatis di foto
+            {supported ? (
+              <>
+                <div>
+                  <p className="font-semibold text-brand-700">Ambil foto bukti WFH</p>
+                  <p className="text-sm text-brand-600">
+                    Jam, tanggal, dan lokasi tercetak otomatis di foto
+                  </p>
+                </div>
+                <Button type="button" onClick={() => void startCamera()} disabled={disabled}>
+                  {disabled ? 'Menunggu lokasi...' : 'Buka Kamera'}
+                </Button>
+              </>
+            ) : (
+              <p className="text-sm text-brand-700">
+                Kamera tidak dapat diakses di browser ini. Pastikan aplikasi dibuka melalui HTTPS
+                dan gunakan browser terbaru seperti Chrome atau Safari.
               </p>
-            </div>
-            <Button type="button" onClick={() => void startCamera()} disabled={disabled}>
-              {disabled ? 'Menunggu lokasi...' : 'Buka Kamera'}
-            </Button>
-            <button
-              type="button"
-              onClick={() => fileInputRef.current?.click()}
-              disabled={disabled}
-              className="flex items-center gap-1.5 text-sm font-medium text-brand-600 hover:underline disabled:opacity-50"
-            >
-              <ImageUp size={16} />
-              atau unggah foto
-            </button>
+            )}
           </div>
         )}
 

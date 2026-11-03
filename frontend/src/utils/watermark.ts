@@ -1,4 +1,5 @@
-const MAX_WIDTH = 1280;
+const OUTPUT_WIDTH = 1280;
+const ASPECT_RATIO = 4 / 3;
 
 function truncate(ctx: CanvasRenderingContext2D, text: string, maxWidth: number) {
   if (ctx.measureText(text).width <= maxWidth) return text;
@@ -24,6 +25,7 @@ function drawWatermark(ctx: CanvasRenderingContext2D, width: number, height: num
   ctx.fillStyle = gradient;
   ctx.fillRect(0, gradientTop, width, height - gradientTop);
 
+  ctx.textAlign = 'center';
   ctx.textBaseline = 'top';
   ctx.fillStyle = '#ffffff';
   ctx.shadowColor = 'rgba(0,0,0,0.6)';
@@ -34,7 +36,7 @@ function drawWatermark(ctx: CanvasRenderingContext2D, width: number, height: num
     ctx.font = `${index === 0 ? 700 : 500} ${size}px system-ui, -apple-system, 'Segoe UI', sans-serif`;
     ctx.fillText(
       truncate(ctx, line, width - padding * 2),
-      padding,
+      width / 2,
       height - blockHeight + padding + index * lineHeight,
     );
   });
@@ -54,10 +56,23 @@ function canvasToFile(canvas: HTMLCanvasElement): Promise<File> {
   });
 }
 
-function render(source: CanvasImageSource, srcWidth: number, srcHeight: number, lines: string[]) {
-  const scale = Math.min(1, MAX_WIDTH / srcWidth);
-  const width = Math.round(srcWidth * scale);
-  const height = Math.round(srcHeight * scale);
+export function videoToWatermarked(video: HTMLVideoElement, lines: string[]) {
+  const srcWidth = video.videoWidth;
+  const srcHeight = video.videoHeight;
+
+  // Potong bagian tengah ke rasio 4:3 supaya sama dengan yang terlihat di layar
+  let cropWidth = srcWidth;
+  let cropHeight = srcHeight;
+  if (srcWidth / srcHeight > ASPECT_RATIO) {
+    cropWidth = srcHeight * ASPECT_RATIO;
+  } else {
+    cropHeight = srcWidth / ASPECT_RATIO;
+  }
+  const cropX = (srcWidth - cropWidth) / 2;
+  const cropY = (srcHeight - cropHeight) / 2;
+
+  const width = Math.min(OUTPUT_WIDTH, Math.round(cropWidth));
+  const height = Math.round(width / ASPECT_RATIO);
 
   const canvas = document.createElement('canvas');
   canvas.width = width;
@@ -65,19 +80,7 @@ function render(source: CanvasImageSource, srcWidth: number, srcHeight: number, 
   const ctx = canvas.getContext('2d');
   if (!ctx) throw new Error('Canvas tidak didukung');
 
-  ctx.drawImage(source, 0, 0, width, height);
+  ctx.drawImage(video, cropX, cropY, cropWidth, cropHeight, 0, 0, width, height);
   drawWatermark(ctx, width, height, lines);
   return canvasToFile(canvas);
-}
-
-export const videoToWatermarked = (video: HTMLVideoElement, lines: string[]) =>
-  render(video, video.videoWidth, video.videoHeight, lines);
-
-export async function imageFileToWatermarked(file: File, lines: string[]) {
-  const bitmap = await createImageBitmap(file, { imageOrientation: 'from-image' });
-  try {
-    return await render(bitmap, bitmap.width, bitmap.height, lines);
-  } finally {
-    bitmap.close();
-  }
 }
