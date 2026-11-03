@@ -10,6 +10,7 @@ import type { Attendance } from '../types/attendance';
 import { fileUrl, formatDate, formatTime, mapsUrl } from '../utils/format';
 import { describeGeoError, getGeoInfo } from '../utils/location';
 import type { GeoInfo } from '../utils/location';
+import { Modal } from '../components/Modal';
 
 type GeoStatus = 'loading' | 'ready' | 'unavailable';
 
@@ -22,6 +23,7 @@ export function AttendancePage() {
   const [notes, setNotes] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
+  const [preview, setPreview] = useState<Attendance | null>(null);
 
   const [geo, setGeo] = useState<GeoInfo | null>(null);
   const [geoStatus, setGeoStatus] = useState<GeoStatus>('loading');
@@ -271,14 +273,13 @@ export function AttendancePage() {
                     </td>
                     <td className="py-3 pr-4 text-gray-600">{item.notes ?? '-'}</td>
                     <td className="py-3">
-                      <a
-                        href={fileUrl(item.photoPath)}
-                        target="_blank"
-                        rel="noreferrer"
+                      <button
+                        type="button"
+                        onClick={() => setPreview(item)}
                         className="font-medium text-brand-600 hover:underline"
                       >
                         Lihat
-                      </a>
+                      </button>
                     </td>
                   </tr>
                 ))}
@@ -286,6 +287,37 @@ export function AttendancePage() {
             </table>
           </div>
         )}
+
+              {preview && (
+        <Modal
+          title={`Foto Absensi · ${formatDate(preview.attendanceDate)}`}
+          onClose={() => setPreview(null)}
+          size="lg"
+        >
+          <img
+            src={fileUrl(preview.photoPath)}
+            alt="Foto bukti absensi"
+            className="w-full rounded-xl object-contain"
+          />
+          <p className="mt-3 text-sm text-gray-500">
+            Tercatat pukul {formatTime(preview.checkInTime)} WIB
+          </p>
+          {preview.latitude !== null && preview.longitude !== null && (
+            <a
+              href={mapsUrl(preview.latitude, preview.longitude)}
+              target="_blank"
+              rel="noreferrer"
+              className="mt-1 flex items-start gap-1.5 text-sm text-brand-600 hover:underline"
+            >
+              <MapPin size={14} className="mt-0.5 shrink-0" />
+              {preview.locationAddress ?? 'Lihat lokasi di peta'}
+            </a>
+          )}
+          {preview.notes && (
+            <p className="mt-1 text-sm text-gray-700">Catatan: {preview.notes}</p>
+          )}
+        </Modal>
+      )}
       </section>
     </div>
   );
