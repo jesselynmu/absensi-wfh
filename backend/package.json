@@ -10,7 +10,7 @@
     "deploy": "nest deploy",
     "format": "prettier --write \"apps/**/*.ts\" \"libs/**/*.ts\"",
     "start": "nest start",
-    "start:all": "concurrently -n auth,attendance,gateway -c blue,magenta,yellow \"nest start auth-service --watch\" \"nest start attendance-service --watch\" \"nest start api-gateway --watch\"",
+    "start:all": "concurrently -n auth,employee,attendance,gateway -c blue,green,magenta,yellow \"nest start auth-service --watch\" \"nest start employee-service --watch\" \"nest start attendance-service --watch\" \"nest start api-gateway --watch\"",
     "start:dev": "nest start --watch",
     "start:debug": "nest start --debug --watch",
     "start:prod": "node dist/apps/backend/main",

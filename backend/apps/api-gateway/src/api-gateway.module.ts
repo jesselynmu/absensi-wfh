@@ -5,6 +5,7 @@ import { ClientsModule, Transport } from '@nestjs/microservices';
 import { AttendanceController } from './attendance/attendance.controller';
 import { AuthController } from './auth/auth.controller';
 import { JwtAuthGuard } from './auth/jwt-auth.guard';
+import { DashboardController } from './dashboard/dashboard.controller';
 
 const tcpClient = (name: string, hostKey: string, portKey: string, defaultPort: number) => ({
   name,
@@ -29,10 +30,11 @@ const tcpClient = (name: string, hostKey: string, portKey: string, defaultPort: 
     }),
     ClientsModule.registerAsync([
       tcpClient('AUTH_SERVICE', 'AUTH_SERVICE_HOST', 'AUTH_SERVICE_PORT', 3001),
+      tcpClient('EMPLOYEE_SERVICE', 'EMPLOYEE_SERVICE_HOST', 'EMPLOYEE_SERVICE_PORT', 3002),
       tcpClient('ATTENDANCE_SERVICE', 'ATTENDANCE_SERVICE_HOST', 'ATTENDANCE_SERVICE_PORT', 3003),
     ]),
   ],
-  controllers: [AuthController, AttendanceController],
+  controllers: [AuthController, AttendanceController, DashboardController],
   providers: [JwtAuthGuard],
 })
 export class ApiGatewayModule {}

@@ -5,6 +5,7 @@ import {
   Get,
   Inject,
   Post,
+  Query,
   UploadedFile,
   UseGuards,
   UseInterceptors,
@@ -18,13 +19,19 @@ import { CurrentUser } from '../auth/current-user.decorator';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import type { JwtPayload } from '../auth/jwt-payload';
 import { sendToService } from '../common/send-to-service';
+import { Roles } from '../auth/roles.decorator';
+import { attachEmployees } from '../common/attach-employees';
+import type { AttendanceRecord } from '../common/types';
 
 export const UPLOAD_DIR = join(process.cwd(), 'uploads');
 
 @Controller('attendances')
 @UseGuards(JwtAuthGuard)
 export class AttendanceController {
-  constructor(@Inject('ATTENDANCE_SERVICE') private readonly client: ClientProxy) {}
+  constructor(
+    @Inject('ATTENDANCE_SERVICE') private readonly client: ClientProxy,
+    @Inject('EMPLOYEE_SERVICE') private readonly employees: ClientProxy,
+  ) {}
 
   @Post('check-in')
   @UseInterceptors(
@@ -78,5 +85,20 @@ export class AttendanceController {
     return sendToService(this.client, { cmd: 'attendance.mine' }, {
       employeeId: user.employeeId,
     });
+  }
+
+  @Get()
+  @Roles('ADMIN')
+  async findAll(
+    @Query('startDate') startDate?: string,
+    @Query('endDate') endDate?: string,
+    @Query('employeeId') employeeId?: string,
+  ) {
+    const records = await sendToService<AttendanceRecord[]>(
+      this.client,
+      { cmd: 'attendance.findAll' },
+      { startDate, endDate, employeeId: employeeId ? Number(employeeId) : undefined },
+    );
+    return attachEmployees(this.employees, records);
   }
 }
