@@ -5,6 +5,9 @@ export interface Attendance {
   checkInTime: string;
   photoPath: string;
   notes: string | null;
+  latitude: number | null;
+  longitude: number | null;
+  locationAddress: string | null;
 }
 
 export interface AttendanceWithEmployee extends Attendance {

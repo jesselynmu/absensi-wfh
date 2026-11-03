@@ -6,14 +6,15 @@ import { AttendanceMonitorPage } from './pages/admin/AttendanceMonitorPage';
 import { DashboardPage } from './pages/admin/DashboardPage';
 import { EmployeesPage } from './pages/admin/EmployeesPage';
 import { AttendancePage } from './pages/AttendancePage';
-import { LoginPage } from './pages/LoginPage';
 import { ChangePasswordPage } from './pages/ChangePasswordPage';
+import { LoginPage } from './pages/LoginPage';
 
 export default function App() {
   return (
     <Routes>
       <Route path="/login" element={<LoginPage />} />
 
+      {/* Semua halaman di dalam blok ini memakai sidebar dan wajib login */}
       <Route
         element={
           <ProtectedRoute>
@@ -23,7 +24,9 @@ export default function App() {
       >
         <Route path="/" element={<HomeRedirect />} />
         <Route path="/absensi" element={<AttendancePage />} />
+        <Route path="/ganti-password" element={<ChangePasswordPage />} />
 
+        {/* Khusus admin HRD */}
         <Route
           element={
             <RoleRoute role="ADMIN">
@@ -38,8 +41,6 @@ export default function App() {
       </Route>
 
       <Route path="*" element={<Navigate to="/" replace />} />
-
-      <Route path="/ganti-password" element={<ChangePasswordPage />} />
     </Routes>
   );
 }

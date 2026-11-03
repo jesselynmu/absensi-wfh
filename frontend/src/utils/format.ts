@@ -21,3 +21,6 @@ export const daysAgo = (days: number) => {
   date.setDate(date.getDate() - days);
   return toISODate(date);
 };
+
+export const mapsUrl = (latitude: number, longitude: number) =>
+  `https://www.google.com/maps?q=${latitude},${longitude}`;

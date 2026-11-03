@@ -1,4 +1,4 @@
-import { Eye, RotateCcw } from 'lucide-react';
+import { Eye, MapPin, RotateCcw } from 'lucide-react'; // BARU: MapPin
 import { useEffect, useState } from 'react';
 import { api, getErrorMessage } from '../../api/client';
 import { Alert } from '../../components/Alert';
@@ -10,7 +10,14 @@ import { SelectField } from '../../components/SelectField';
 import { TextField } from '../../components/TextField';
 import type { AttendanceWithEmployee } from '../../types/attendance';
 import type { Employee } from '../../types/employee';
-import { daysAgo, fileUrl, formatDate, formatTime, toISODate } from '../../utils/format';
+import {
+  daysAgo,
+  fileUrl,
+  formatDate,
+  formatTime,
+  mapsUrl, // BARU
+  toISODate,
+} from '../../utils/format';
 
 const defaultFilter = () => ({
   startDate: daysAgo(6),
@@ -122,13 +129,15 @@ export function AttendanceMonitorPage() {
         </div>
 
         <div className="overflow-x-auto">
-          <table className="w-full min-w-[720px] text-left text-sm">
+          {/* BARU: lebar minimum dinaikkan karena ada kolom tambahan */}
+          <table className="w-full min-w-[880px] text-left text-sm">
             <thead className="bg-gray-50 text-gray-500">
               <tr>
                 <th className="px-4 py-3 font-medium">Tanggal</th>
                 <th className="px-4 py-3 font-medium">Karyawan</th>
                 <th className="px-4 py-3 font-medium">Departemen</th>
                 <th className="px-4 py-3 font-medium">Jam Masuk</th>
+                <th className="px-4 py-3 font-medium">Lokasi</th> {/* BARU */}
                 <th className="px-4 py-3 font-medium">Catatan</th>
                 <th className="px-4 py-3 font-medium">Foto</th>
               </tr>
@@ -136,7 +145,8 @@ export function AttendanceMonitorPage() {
             <tbody className="divide-y divide-gray-100">
               {!loading && records.length === 0 ? (
                 <tr>
-                  <td colSpan={6} className="px-4 py-8 text-center text-gray-500">
+                  {/* BARU: colSpan 6 → 7 karena jumlah kolom bertambah */}
+                  <td colSpan={7} className="px-4 py-8 text-center text-gray-500">
                     Tidak ada data absensi pada filter ini.
                   </td>
                 </tr>
@@ -161,8 +171,29 @@ export function AttendanceMonitorPage() {
                     <td className="whitespace-nowrap px-4 py-3 font-medium tabular-nums text-gray-900">
                       {formatTime(item.checkInTime)}
                     </td>
+
+                    {/* BARU: kolom lokasi, link ke Google Maps */}
+                    <td className="max-w-[240px] px-4 py-3">
+                      {item.latitude !== null && item.longitude !== null ? (
+                        <a
+                          href={mapsUrl(item.latitude, item.longitude)}
+                          target="_blank"
+                          rel="noreferrer"
+                          title={item.locationAddress ?? undefined}
+                          className="flex items-start gap-1.5 text-brand-600 hover:underline"
+                        >
+                          <MapPin size={14} className="mt-0.5 shrink-0" />
+                          <span className="truncate">{item.locationAddress ?? 'Lihat peta'}</span>
+                        </a>
+                      ) : (
+                        <span className="text-gray-400">Tidak tersedia</span>
+                      )}
+                    </td>
+
                     <td className="max-w-[220px] px-4 py-3 text-gray-600">
-                      <p className="truncate" title={item.notes ?? undefined}>{item.notes ?? '-'}</p>
+                      <p className="truncate" title={item.notes ?? undefined}>
+                        {item.notes ?? '-'}
+                      </p>
                     </td>
                     <td className="px-4 py-3">
                       <button
@@ -204,6 +235,23 @@ export function AttendanceMonitorPage() {
           <p className="mt-3 text-sm text-gray-500">
             {formatDate(preview.attendanceDate)} · pukul {formatTime(preview.checkInTime)} WIB
           </p>
+
+          {/* BARU: lokasi juga ditampilkan di popup foto */}
+          {preview.latitude !== null && preview.longitude !== null ? (
+            <a
+              href={mapsUrl(preview.latitude, preview.longitude)}
+              target="_blank"
+              rel="noreferrer"
+              className="mt-1 flex items-start gap-1.5 text-sm text-brand-600 hover:underline"
+            >
+              <MapPin size={14} className="mt-0.5 shrink-0" />
+              {preview.locationAddress ??
+                `${preview.latitude.toFixed(6)}, ${preview.longitude.toFixed(6)}`}
+            </a>
+          ) : (
+            <p className="mt-1 text-sm text-gray-400">Lokasi tidak tersedia</p>
+          )}
+
           {preview.notes && <p className="mt-1 text-sm text-gray-700">Catatan: {preview.notes}</p>}
         </Modal>
       )}
