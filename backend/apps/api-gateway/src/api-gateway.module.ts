@@ -6,6 +6,7 @@ import { AttendanceController } from './attendance/attendance.controller';
 import { AuthController } from './auth/auth.controller';
 import { JwtAuthGuard } from './auth/jwt-auth.guard';
 import { DashboardController } from './dashboard/dashboard.controller';
+import { EmployeesController } from './employees/employees.controller';
 
 const tcpClient = (name: string, hostKey: string, portKey: string, defaultPort: number) => ({
   name,
@@ -34,7 +35,7 @@ const tcpClient = (name: string, hostKey: string, portKey: string, defaultPort: 
       tcpClient('ATTENDANCE_SERVICE', 'ATTENDANCE_SERVICE_HOST', 'ATTENDANCE_SERVICE_PORT', 3003),
     ]),
   ],
-  controllers: [AuthController, AttendanceController, DashboardController],
+  controllers: [AuthController, AttendanceController, EmployeesController, DashboardController],
   providers: [JwtAuthGuard],
 })
 export class ApiGatewayModule {}
