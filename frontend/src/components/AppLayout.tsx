@@ -2,6 +2,7 @@ import {
   Camera,
   ClipboardList,
   House,
+  KeyRound,
   LayoutDashboard,
   LogOut,
   Menu,
@@ -18,6 +19,7 @@ const navItems = [
   { to: '/karyawan', label: 'Data Karyawan', icon: Users, adminOnly: true },
   { to: '/monitoring', label: 'Monitoring Absensi', icon: ClipboardList, adminOnly: true },
   { to: '/absensi', label: 'Absensi Saya', icon: Camera, adminOnly: false },
+  { to: '/ganti-password', label: 'Ganti Password', icon: KeyRound, adminOnly: false },
 ];
 
 export function AppLayout() {

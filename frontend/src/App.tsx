@@ -7,6 +7,7 @@ import { DashboardPage } from './pages/admin/DashboardPage';
 import { EmployeesPage } from './pages/admin/EmployeesPage';
 import { AttendancePage } from './pages/AttendancePage';
 import { LoginPage } from './pages/LoginPage';
+import { ChangePasswordPage } from './pages/ChangePasswordPage';
 
 export default function App() {
   return (
@@ -37,6 +38,8 @@ export default function App() {
       </Route>
 
       <Route path="*" element={<Navigate to="/" replace />} />
+
+      <Route path="/ganti-password" element={<ChangePasswordPage />} />
     </Routes>
   );
 }
