@@ -8,51 +8,105 @@ import { Button } from '../../components/Button';
 import { CredentialsModal } from '../../components/CredentialsModal';
 import { Modal } from '../../components/Modal';
 import { PageHeader } from '../../components/PageHeader';
+import { Pagination } from '../../components/Pagination';
 import { useAuth } from '../../context/AuthContext';
+import { useDebouncedValue } from '../../hooks/useDebouncedValue';
 import type { Credentials, Employee } from '../../types/employee';
+import type { PaginatedResult } from '../../types/pagination';
 import { EmployeeFormModal } from './EmployeeFormModal';
+
+const PAGE_SIZE = 10;
+
+const emptyResult: PaginatedResult<Employee> = {
+  items: [],
+  total: 0,
+  page: 1,
+  limit: PAGE_SIZE,
+  totalPages: 1,
+};
 
 export function EmployeesPage() {
   const { user } = useAuth();
-  const [employees, setEmployees] = useState<Employee[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [search, setSearch] = useState('');
+
+  // Filter dan halaman
+  const [searchInput, setSearchInput] = useState('');
   const [status, setStatus] = useState('all');
+  const [page, setPage] = useState(1);
+  const [reloadToken, setReloadToken] = useState(0);
+
+  // Data
+  const [result, setResult] = useState(emptyResult);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
 
+  // Modal
   const [formOpen, setFormOpen] = useState(false);
   const [editing, setEditing] = useState<Employee | null>(null);
-
   const [deleting, setDeleting] = useState<Employee | null>(null);
   const [resetting, setResetting] = useState<Employee | null>(null);
   const [actionError, setActionError] = useState('');
   const [actionLoading, setActionLoading] = useState(false);
-
   const [credentials, setCredentials] = useState<{ title: string; data: Credentials } | null>(null);
 
-  const loadEmployees = useCallback(async () => {
-    setLoading(true);
-    try {
-      const { data } = await api.get<Employee[]>('/employees', {
-        params: {
-          search: search.trim() || undefined,
-          status: status === 'all' ? undefined : status,
-        },
-      });
-      setEmployees(data);
-      setError('');
-    } catch (err) {
-      setError(getErrorMessage(err));
-    } finally {
-      setLoading(false);
-    }
-  }, [search, status]);
+  const search = useDebouncedValue(searchInput.trim(), 400);
+
+  // reloadToken ikut masuk kunci (tapi tidak dikirim ke API), supaya
+  // menaikkan angkanya memicu pemuatan ulang dengan filter yang sama
+  const requestKey = JSON.stringify({
+    params: {
+      search: search || undefined,
+      status: status === 'all' ? undefined : status,
+      page,
+      limit: PAGE_SIZE,
+    },
+    reloadToken,
+  });
+  const [loadedKey, setLoadedKey] = useState<string | null>(null);
+  const loading = loadedKey !== requestKey;
 
   useEffect(() => {
-    const timer = setTimeout(() => void loadEmployees(), 300);
-    return () => clearTimeout(timer);
-  }, [loadEmployees]);
+    let cancelled = false;
+
+    api
+      .get<PaginatedResult<Employee>>('/employees', {
+        params: JSON.parse(requestKey).params,
+      })
+      .then(({ data }) => {
+        if (cancelled) return;
+
+        // Halaman ini jadi kosong (misal data terakhirnya baru dihapus):
+        // mundur ke halaman terakhir yang masih ada isinya
+        if (data.items.length === 0 && data.page > data.totalPages) {
+          setPage(data.totalPages);
+          return;
+        }
+
+        setResult(data);
+        setError('');
+        setLoadedKey(requestKey);
+      })
+      .catch((err) => {
+        if (cancelled) return;
+        setError(getErrorMessage(err));
+        setLoadedKey(requestKey);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [requestKey]);
+
+  const reload = () => setReloadToken((token) => token + 1);
+
+  const changeSearch = (value: string) => {
+    setSearchInput(value);
+    setPage(1);
+  };
+
+  const changeStatus = (value: string) => {
+    setStatus(value);
+    setPage(1);
+  };
 
   const openCreate = () => {
     setEditing(null);
@@ -72,7 +126,7 @@ export function EmployeesPage() {
     if (newCredentials) {
       setCredentials({ title: 'Akun Berhasil Dibuat', data: newCredentials });
     }
-    void loadEmployees();
+    reload();
   };
 
   const closeAction = useCallback(() => {
@@ -89,7 +143,7 @@ export function EmployeesPage() {
       await api.delete(`/employees/${deleting.id}`);
       setSuccess(`${deleting.fullName} berhasil dihapus`);
       setDeleting(null);
-      void loadEmployees();
+      reload();
     } catch (err) {
       setActionError(getErrorMessage(err));
     } finally {
@@ -121,6 +175,8 @@ export function EmployeesPage() {
     }
   };
 
+  const { items, total, totalPages } = result;
+
   return (
     <div className="space-y-6">
       <PageHeader
@@ -149,15 +205,16 @@ export function EmployeesPage() {
               className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"
             />
             <input
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
+              value={searchInput}
+              onChange={(e) => changeSearch(e.target.value)}
               placeholder="Cari nama, kode, atau email..."
+              maxLength={100}
               className="w-full rounded-lg border border-gray-300 py-2.5 pl-10 pr-3 outline-none focus:ring-2 focus:ring-brand-400"
             />
           </div>
           <select
             value={status}
-            onChange={(e) => setStatus(e.target.value)}
+            onChange={(e) => changeStatus(e.target.value)}
             aria-label="Filter status"
             className="rounded-lg border border-gray-300 bg-white px-3 py-2.5 outline-none focus:ring-2 focus:ring-brand-400"
           >
@@ -179,21 +236,19 @@ export function EmployeesPage() {
                 <th className="px-4 py-3 text-right font-medium">Aksi</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-gray-100">
-              {loading && employees.length === 0 ? (
+            <tbody
+              className={`divide-y divide-gray-100 transition-opacity ${
+                loading ? 'opacity-50' : ''
+              }`}
+            >
+              {items.length === 0 ? (
                 <tr>
                   <td colSpan={6} className="px-4 py-8 text-center text-gray-500">
-                    Memuat data...
-                  </td>
-                </tr>
-              ) : employees.length === 0 ? (
-                <tr>
-                  <td colSpan={6} className="px-4 py-8 text-center text-gray-500">
-                    Tidak ada karyawan yang cocok.
+                    {loading ? 'Memuat data...' : 'Tidak ada karyawan yang cocok.'}
                   </td>
                 </tr>
               ) : (
-                employees.map((emp) => {
+                items.map((emp) => {
                   const isSelf = emp.id === user?.employeeId;
                   return (
                     <tr key={emp.id} className="hover:bg-gray-50">
@@ -262,6 +317,17 @@ export function EmployeesPage() {
               )}
             </tbody>
           </table>
+        </div>
+
+        <div className="border-t border-gray-100 px-4 py-3">
+          <Pagination
+            page={page}
+            totalPages={totalPages}
+            total={total}
+            limit={PAGE_SIZE}
+            onPageChange={setPage}
+            disabled={loading}
+          />
         </div>
       </section>
 
