@@ -14,8 +14,8 @@ export class AttendanceServiceController {
   }
 
   @MessagePattern({ cmd: 'attendance.mine' })
-  findMine(@Payload() data: { employeeId: number }) {
-    return this.attendanceService.findMine(data.employeeId);
+  findMine(@Payload() data: { employeeId: number; startDate?: string; endDate?: string }) {
+    return this.attendanceService.findMine(data);
   }
 
   @MessagePattern({ cmd: 'attendance.findAll' })

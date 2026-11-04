@@ -81,11 +81,17 @@ export class AttendanceServiceService {
     return { attendance };
   }
 
-  findMine(employeeId: number) {
+  findMine(data: { employeeId: number; startDate?: string; endDate?: string }) {
+    const where = this.buildWhere({ startDate: data.startDate, endDate: data.endDate });
+    // employeeId selalu dari token, dipasang paling akhir supaya tidak bisa ditimpa
+    where.employeeId = data.employeeId;
+
+    const filtered = Boolean(data.startDate || data.endDate);
+
     return this.repo.find({
-      where: { employeeId },
+      where,
       order: { attendanceDate: 'DESC' },
-      take: 30,
+      take: filtered ? 100 : 30,
     });
   }
 

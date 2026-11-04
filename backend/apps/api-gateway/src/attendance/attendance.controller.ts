@@ -38,6 +38,7 @@ import { sendToService } from '../common/send-to-service';
 import type { AttendanceRecord, EmployeeRecord, PaginatedResult } from '../common/types';
 import { AttendanceQueryDto } from './dto/attendance-query.dto';
 import { CheckInDto } from './dto/check-in.dto';
+import { MyAttendanceQueryDto } from './dto/my-attendance-query.dto';
 
 export const UPLOAD_DIR = join(process.cwd(), 'uploads');
 
@@ -129,10 +130,16 @@ export class AttendanceController {
   }
 
   @Get('me')
-  @ApiOperation({ summary: 'Riwayat absensi milik user yang login' })
-  mine(@CurrentUser() user: JwtPayload) {
+  @ApiOperation({
+    summary: 'Riwayat absensi milik user yang login',
+    description:
+      'Tanpa filter: 30 absensi terakhir. Dengan filter tanggal: maksimal 100 data.',
+  })
+  mine(@CurrentUser() user: JwtPayload, @Query() query: MyAttendanceQueryDto) {
     return sendToService(this.client, { cmd: 'attendance.mine' }, {
       employeeId: user.employeeId,
+      startDate: query.startDate,
+      endDate: query.endDate,
     });
   }
 
