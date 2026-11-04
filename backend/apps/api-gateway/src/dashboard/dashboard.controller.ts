@@ -1,11 +1,14 @@
 import { Controller, Get, Inject, UseGuards } from '@nestjs/common';
 import { ClientProxy } from '@nestjs/microservices';
+import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { Roles } from '../auth/roles.decorator';
 import { attachEmployees } from '../common/attach-employees';
 import { sendToService } from '../common/send-to-service';
 import type { AttendanceRecord } from '../common/types';
 
+@ApiTags('Dashboard')
+@ApiBearerAuth()
 @Controller('dashboard')
 @UseGuards(JwtAuthGuard)
 @Roles('ADMIN')
@@ -16,6 +19,12 @@ export class DashboardController {
   ) {}
 
   @Get('summary')
+  @ApiOperation({
+    summary: 'Ringkasan dashboard hari ini (admin)',
+    description:
+      'Total karyawan, jumlah yang sudah dan belum absen hari ini (WIB), ' +
+      'serta 5 absensi terbaru hari ini.',
+  })
   async summary() {
     const today = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Jakarta' }).format(
       new Date(),

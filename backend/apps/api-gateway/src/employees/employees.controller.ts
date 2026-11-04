@@ -24,7 +24,10 @@ import type { AccountRecord, EmployeeRecord } from '../common/types';
 import { CreateEmployeeDto } from './dto/create-employee.dto';
 import { UpdateEmployeeDto } from './dto/update-employee.dto';
 import { AllowDuringPasswordChange } from '../auth/allow-during-password-change.decorator';
+import { ApiBearerAuth, ApiOperation, ApiQuery, ApiTags } from '@nestjs/swagger';
 
+@ApiTags('Employees')
+@ApiBearerAuth()
 @Controller('employees')
 @UseGuards(JwtAuthGuard)
 export class EmployeesController {
@@ -48,6 +51,7 @@ export class EmployeesController {
   // Profil user yang sedang login (dipakai semua role untuk menampilkan nama)
   @Get('me')
   @AllowDuringPasswordChange()
+  @ApiOperation({ summary: 'Profil user yang sedang login' })
   async me(@CurrentUser() user: JwtPayload) {
     const employee = await sendToService<EmployeeRecord>(
       this.employees,
@@ -59,6 +63,9 @@ export class EmployeesController {
 
   @Get()
   @Roles('ADMIN')
+  @ApiOperation({ summary: 'Daftar karyawan (admin)' })
+  @ApiQuery({ name: 'search', required: false, description: 'Cari nama, kode, atau email' })
+  @ApiQuery({ name: 'status', required: false, enum: ['active', 'inactive'] })
   async findAll(@Query('search') search?: string, @Query('status') status?: string) {
     const list = await sendToService<EmployeeRecord[]>(
       this.employees,
@@ -70,6 +77,7 @@ export class EmployeesController {
 
   @Get(':id')
   @Roles('ADMIN')
+  @ApiOperation({ summary: 'Detail karyawan (admin)' })
   async findOne(@Param('id', ParseIntPipe) id: number) {
     const employee = await sendToService<EmployeeRecord>(
       this.employees,
@@ -82,6 +90,10 @@ export class EmployeesController {
 
   @Post()
   @Roles('ADMIN')
+  @ApiOperation({
+    summary: 'Tambah karyawan beserta akun login (admin)',
+    description: 'Kode karyawan dan password sementara dibuat otomatis oleh sistem.',
+  })
   async create(@Body() dto: CreateEmployeeDto) {
     const { role, ...employeeData } = dto;
 
@@ -108,6 +120,7 @@ export class EmployeesController {
 
   @Patch(':id')
   @Roles('ADMIN')
+  @ApiOperation({ summary: 'Ubah data karyawan (admin)' })
   async update(
     @Param('id', ParseIntPipe) id: number,
     @Body() dto: UpdateEmployeeDto,
@@ -142,6 +155,7 @@ export class EmployeesController {
   @Post(':id/reset-password')
   @Roles('ADMIN')
   @HttpCode(200)
+  @ApiOperation({ summary: 'Buat password sementara baru untuk karyawan (admin)' })
   resetPassword(@Param('id', ParseIntPipe) id: number) {
     return sendToService<{ temporaryPassword: string }>(
       this.auth,
@@ -152,6 +166,10 @@ export class EmployeesController {
 
   @Delete(':id')
   @Roles('ADMIN')
+  @ApiOperation({
+    summary: 'Hapus karyawan (admin)',
+    description: 'Ditolak jika karyawan sudah memiliki riwayat absensi. Nonaktifkan saja.',
+  })
   async remove(@Param('id', ParseIntPipe) id: number, @CurrentUser() user: JwtPayload) {
     if (id === user.employeeId) {
       throw new BadRequestException('Anda tidak dapat menghapus akun Anda sendiri');
