@@ -161,6 +161,13 @@ Akun karyawan baru juga bisa dibuat lewat menu **Data Karyawan**. Password awaln
 
 ## Endpoint API
 
+Dokumentasi interaktif (Swagger) tersedia di **http://localhost:3000/api/docs** saat aplikasi berjalan. Cara mencobanya:
+
+1. Buka bagian **Auth**, jalankan `POST /api/auth/login` dengan akun demo.
+2. Salin nilai `accessToken` dari respons.
+3. Klik tombol **Authorize** di kanan atas, tempelkan token, lalu klik **Authorize**.
+4. Semua endpoint lain sekarang bisa dicoba langsung dari browser.
+
 Base URL: `http://localhost:3000/api`. Semua endpoint selain login membutuhkan header `Authorization: Bearer <token>`.
 
 | Method | Endpoint | Akses | Keterangan |
