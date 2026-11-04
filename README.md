@@ -175,7 +175,7 @@ Base URL: `http://localhost:3000/api`. Semua endpoint selain login membutuhkan h
 | POST | `/auth/login` | Publik | Login, mengembalikan access token |
 | <!-- CEK --> | `/auth/change-password` | Semua | Ganti password sendiri |
 | GET | `/employees/me` | Semua | Profil user yang sedang login |
-| GET | `/employees?search=&status=` | Admin | Daftar karyawan dengan pencarian dan filter status |
+| GET | `/employees?search=&status=&page=&limit=` | Admin | Daftar karyawan dengan pencarian, filter status, dan pagination |
 | GET | `/employees/:id` | Admin | Detail karyawan |
 | POST | `/employees` | Admin | Tambah karyawan sekaligus akun login |
 | PATCH | `/employees/:id` | Admin | Ubah data karyawan |
@@ -209,6 +209,5 @@ Beberapa hal yang sengaja disederhanakan untuk keperluan technical test, beserta
 
   Perubahannya cukup di api-gateway (bagian upload). Kolom `photo_path` di database tetap dipakai, hanya isinya berubah dari path lokal menjadi object key di bucket.
 - **Wajib ganti password saat login pertama** dengan password sementara dari HRD.
-- **Pagination** di halaman monitoring absensi dan data karyawan.
 - **Database terpisah per service**, sesuai prinsip *database per service* pada microservices. Saat ini ketiga service masih memakai satu database MySQL supaya lebih mudah dijalankan.
 - **Message broker** (misalnya RabbitMQ) sebagai pengganti TCP, supaya komunikasi antar service lebih tahan terhadap gangguan.
