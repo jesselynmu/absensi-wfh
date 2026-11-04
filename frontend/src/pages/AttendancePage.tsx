@@ -11,14 +11,28 @@ import { SecureImage } from '../components/SecureImage';
 import { TextField } from '../components/TextField';
 import { useAuth } from '../context/AuthContext';
 import type { Attendance } from '../types/attendance';
-import { attendancePhotoPath, formatDate, formatTime, mapsUrl } from '../utils/format';
+import {
+  attendancePhotoPath,
+  daysAgo,
+  formatDate,
+  formatTime,
+  mapsUrl,
+  toISODate,
+} from '../utils/format';
 import { describeGeoError, getGeoInfo } from '../utils/location';
 import type { GeoInfo } from '../utils/location';
 
 type GeoStatus = 'loading' | 'ready' | 'unavailable';
 
 const FILTERED_LIMIT = 100;
-const emptyHistoryFilter = { startDate: '', endDate: '' };
+
+// Default: 7 hari terakhir (6 hari lalu sampai hari ini)
+const defaultHistoryFilter = () => ({
+  startDate: daysAgo(6),
+  endDate: toISODate(new Date()),
+});
+
+type HistoryFilter = ReturnType<typeof defaultHistoryFilter>;
 
 export function AttendancePage() {
   const { user } = useAuth();
@@ -33,7 +47,7 @@ export function AttendancePage() {
 
   // Riwayat
   const [history, setHistory] = useState<Attendance[]>([]);
-  const [historyFilter, setHistoryFilter] = useState(emptyHistoryFilter);
+  const [historyFilter, setHistoryFilter] = useState(defaultHistoryFilter);
   const [historyReload, setHistoryReload] = useState(0);
   const [historyError, setHistoryError] = useState('');
   const [preview, setPreview] = useState<Attendance | null>(null);
@@ -105,8 +119,14 @@ export function AttendancePage() {
     };
   }, [historyKey]);
 
-  const updateHistoryFilter = (field: keyof typeof emptyHistoryFilter, value: string) =>
+  const updateHistoryFilter = (field: keyof HistoryFilter, value: string) =>
     setHistoryFilter((prev) => ({ ...prev, [field]: value }));
+
+  // Tombol reset hanya muncul kalau filter sudah diubah dari default
+  const initialFilter = defaultHistoryFilter();
+  const isDefaultFilter =
+    historyFilter.startDate === initialFilter.startDate &&
+    historyFilter.endDate === initialFilter.endDate;
 
   const retryLocation = () => {
     setGeoStatus('loading');
@@ -172,9 +192,11 @@ export function AttendancePage() {
 
   const historyCaption = historyLoading
     ? 'Memuat riwayat...'
-    : isFiltered
-      ? `${history.length} absensi ditemukan`
-      : 'Menampilkan 30 absensi terakhir';
+    : !isFiltered
+      ? 'Menampilkan 30 absensi terakhir'
+      : isDefaultFilter
+        ? `7 hari terakhir · ${history.length} absensi`
+        : `${history.length} absensi ditemukan`;
 
   return (
     <div className="space-y-6">
@@ -314,14 +336,14 @@ export function AttendancePage() {
               min={historyFilter.startDate || undefined}
               onChange={(e) => updateHistoryFilter('endDate', e.target.value)}
             />
-            {isFiltered && (
+            {!isDefaultFilter && (
               <button
                 type="button"
-                onClick={() => setHistoryFilter(emptyHistoryFilter)}
+                onClick={() => setHistoryFilter(defaultHistoryFilter())}
                 className="col-span-2 flex items-center justify-center gap-2 rounded-lg border border-gray-300 px-4 py-2.5 text-sm font-medium text-gray-700 hover:bg-gray-50"
               >
                 <RotateCcw size={16} />
-                Reset
+                7 hari terakhir
               </button>
             )}
           </div>
