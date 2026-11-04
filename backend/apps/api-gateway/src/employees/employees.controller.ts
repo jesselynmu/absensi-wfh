@@ -23,6 +23,7 @@ import { sendToService } from '../common/send-to-service';
 import type { AccountRecord, EmployeeRecord } from '../common/types';
 import { CreateEmployeeDto } from './dto/create-employee.dto';
 import { UpdateEmployeeDto } from './dto/update-employee.dto';
+import { AllowDuringPasswordChange } from '../auth/allow-during-password-change.decorator';
 
 @Controller('employees')
 @UseGuards(JwtAuthGuard)
@@ -46,6 +47,7 @@ export class EmployeesController {
 
   // Profil user yang sedang login (dipakai semua role untuk menampilkan nama)
   @Get('me')
+  @AllowDuringPasswordChange()
   async me(@CurrentUser() user: JwtPayload) {
     const employee = await sendToService<EmployeeRecord>(
       this.employees,

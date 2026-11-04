@@ -32,11 +32,16 @@ export class AuthServiceService {
       });
     }
 
+    return this.buildSession(user);
+  }
+
+  private async buildSession(user: User) {
     const payload = {
       sub: user.id,
       employeeId: user.employeeId,
       email: user.email,
       role: user.role,
+      mustChangePassword: user.mustChangePassword,
     };
 
     return {
@@ -46,6 +51,7 @@ export class AuthServiceService {
         email: user.email,
         role: user.role,
         employeeId: user.employeeId,
+        mustChangePassword: user.mustChangePassword,
       },
     };
   }
@@ -78,6 +84,7 @@ export class AuthServiceService {
           email: data.email,
           role: data.role,
           passwordHash: await bcrypt.hash(temporaryPassword, 10),
+          mustChangePassword: true,
         }),
       );
       return { ...this.toAccount(user), temporaryPassword };
@@ -109,6 +116,7 @@ export class AuthServiceService {
     const user = await this.findByEmployeeId(employeeId);
     const temporaryPassword = generatePassword();
     user.passwordHash = await bcrypt.hash(temporaryPassword, 10);
+    user.mustChangePassword = true;
     await this.users.save(user);
     return { temporaryPassword };
   }
@@ -152,7 +160,11 @@ export class AuthServiceService {
     }
 
     user.passwordHash = await bcrypt.hash(data.newPassword, 10);
+    user.mustChangePassword = false;
     await this.users.save(user);
-    return { message: 'Password berhasil diubah' };
+
+    // Token lama masih membawa mustChangePassword: true,
+    // jadi kirim token baru supaya user tidak perlu login ulang.
+    return { message: 'Password berhasil diubah', ...(await this.buildSession(user)) };
   }
 }

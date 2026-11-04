@@ -1,6 +1,7 @@
 import { Body, Controller, HttpCode, Inject, Post, UseGuards } from '@nestjs/common';
 import { ClientProxy } from '@nestjs/microservices';
 import { sendToService } from '../common/send-to-service';
+import { AllowDuringPasswordChange } from './allow-during-password-change.decorator';
 import { CurrentUser } from './current-user.decorator';
 import { ChangePasswordDto } from './dto/change-password.dto';
 import { LoginDto } from './dto/login.dto';
@@ -20,6 +21,7 @@ export class AuthController {
   @Post('change-password')
   @HttpCode(200)
   @UseGuards(JwtAuthGuard)
+  @AllowDuringPasswordChange()
   changePassword(@CurrentUser() user: JwtPayload, @Body() dto: ChangePasswordDto) {
     return sendToService(this.authClient, { cmd: 'auth.changePassword' }, {
       userId: user.sub,

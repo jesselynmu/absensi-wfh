@@ -5,4 +5,5 @@ export interface JwtPayload {
   employeeId: number;
   email: string;
   role: UserRole;
+  mustChangePassword?: boolean;
 }

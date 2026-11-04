@@ -7,6 +7,7 @@ import {
 } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 import { JwtService } from '@nestjs/jwt';
+import { ALLOW_DURING_PASSWORD_CHANGE_KEY } from './allow-during-password-change.decorator';
 import { JwtPayload, UserRole } from './jwt-payload';
 import { ROLES_KEY } from './roles.decorator';
 
@@ -29,6 +30,18 @@ export class JwtAuthGuard implements CanActivate {
       req.user = await this.jwt.verifyAsync<JwtPayload>(token);
     } catch {
       throw new UnauthorizedException('Sesi berakhir, silakan login ulang');
+    }
+
+    const allowDuringPasswordChange = this.reflector.getAllAndOverride<boolean>(
+      ALLOW_DURING_PASSWORD_CHANGE_KEY,
+      [ctx.getHandler(), ctx.getClass()],
+    );
+    if (req.user.mustChangePassword && !allowDuringPasswordChange) {
+      throw new ForbiddenException({
+        statusCode: 403,
+        code: 'PASSWORD_CHANGE_REQUIRED',
+        message: 'Anda wajib mengganti password terlebih dahulu',
+      });
     }
 
     const roles = this.reflector.getAllAndOverride<UserRole[]>(ROLES_KEY, [
