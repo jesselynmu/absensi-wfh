@@ -1,7 +1,6 @@
 import {
   Camera,
   ClipboardList,
-  House,
   KeyRound,
   LayoutDashboard,
   LogOut,
@@ -11,8 +10,8 @@ import {
 import { useEffect, useState } from 'react';
 import { NavLink, Outlet } from 'react-router-dom';
 import { api } from '../api/client';
+import logo from '../assets/LogoAplikasi.png';
 import { useAuth } from '../context/AuthContext';
-import { Badge } from './Badge';
 
 const navItems = [
   { to: '/dashboard', label: 'Dashboard', icon: LayoutDashboard, adminOnly: true },
@@ -51,9 +50,7 @@ export function AppLayout() {
         }`}
       >
         <div className="flex items-center gap-3 px-6 py-5">
-          <div className="grid h-9 w-9 place-items-center rounded-lg bg-brand-500 text-white">
-            <House size={18} />
-          </div>
+          <img src={logo} alt="Logo Absensi WFH" className="h-9 w-9 rounded-lg object-contain" />
           <span className="text-lg font-bold text-gray-900">Absensi WFH</span>
         </div>
 
@@ -78,11 +75,6 @@ export function AppLayout() {
         <div className="border-t border-gray-200 p-4">
           <p className="truncate text-sm font-semibold text-gray-900">{fullName ?? user?.email}</p>
           <p className="truncate text-xs text-gray-500">{user?.email}</p>
-          <div className="mt-2">
-            <Badge tone={user?.role === 'ADMIN' ? 'brand' : 'gray'}>
-              {user?.role === 'ADMIN' ? 'Admin HRD' : 'Karyawan'}
-            </Badge>
-          </div>
           <button
             type="button"
             onClick={logout}
@@ -104,8 +96,9 @@ export function AppLayout() {
           >
             <Menu size={20} />
           </button>
+          <img src={logo} alt="" className="h-7 w-7 rounded-md object-contain" />
           <span className="font-bold text-gray-900">Absensi WFH</span>
-        </header>
+          </header>
 
         <main className="mx-auto w-full max-w-6xl flex-1 p-4 lg:p-8">
           <Outlet />

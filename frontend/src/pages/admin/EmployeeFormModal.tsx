@@ -7,7 +7,14 @@ import { SelectField } from '../../components/SelectField';
 import { TextField } from '../../components/TextField';
 import { useAuth } from '../../context/AuthContext';
 import type { UserRole } from '../../types/auth';
-import type { Credentials, Employee } from '../../types/employee';
+import {
+  GENDER_LABELS,
+  MARITAL_STATUS_LABELS,
+  type Credentials,
+  type Employee,
+  type Gender,
+  type MaritalStatus,
+} from '../../types/employee';
 
 interface EmployeeFormModalProps {
   employee: Employee | null;
@@ -16,6 +23,16 @@ interface EmployeeFormModalProps {
 }
 
 const toNullable = (value: string) => (value.trim() === '' ? null : value.trim());
+const digitsOnly = (value: string) => value.replace(/\D/g, '');
+
+// Ubah objek label jadi daftar opsi untuk SelectField, diawali opsi kosong
+const toOptions = (labels: Record<string, string>, placeholder: string) => [
+  { value: '', label: placeholder },
+  ...Object.entries(labels).map(([value, label]) => ({ value, label })),
+];
+
+const GENDER_OPTIONS = toOptions(GENDER_LABELS, 'Pilih gender');
+const MARITAL_STATUS_OPTIONS = toOptions(MARITAL_STATUS_LABELS, 'Pilih status');
 
 export function EmployeeFormModal({ employee, onClose, onSaved }: EmployeeFormModalProps) {
   const { user } = useAuth();
@@ -29,6 +46,13 @@ export function EmployeeFormModal({ employee, onClose, onSaved }: EmployeeFormMo
     department: employee?.department ?? '',
     position: employee?.position ?? '',
     joinDate: employee?.joinDate ?? '',
+    domicile: employee?.domicile ?? '',
+    birthPlace: employee?.birthPlace ?? '',
+    birthDate: employee?.birthDate ?? '',
+    gender: (employee?.gender ?? '') as Gender | '',
+    maritalStatus: (employee?.maritalStatus ?? '') as MaritalStatus | '',
+    identityNumber: employee?.identityNumber ?? '',
+    npwpNumber: employee?.npwpNumber ?? '',
     role: (employee?.role ?? 'EMPLOYEE') as UserRole,
     isActive: employee?.isActive ?? true,
   });
@@ -49,6 +73,13 @@ export function EmployeeFormModal({ employee, onClose, onSaved }: EmployeeFormMo
       department: toNullable(form.department),
       position: toNullable(form.position),
       joinDate: form.joinDate || null,
+      domicile: toNullable(form.domicile),
+      birthPlace: toNullable(form.birthPlace),
+      birthDate: form.birthDate || null,
+      gender: form.gender || null,
+      maritalStatus: form.maritalStatus || null,
+      identityNumber: toNullable(form.identityNumber),
+      npwpNumber: toNullable(form.npwpNumber),
       role: form.role,
     };
 
@@ -155,6 +186,71 @@ export function EmployeeFormModal({ employee, onClose, onSaved }: EmployeeFormMo
                 ]}
               />
             )}
+          </div>
+        </div>
+
+        <div>
+          <h3 className="mb-3 text-sm font-semibold uppercase tracking-wide text-gray-400">
+            Data Pribadi
+          </h3>
+          <div className="grid gap-4 sm:grid-cols-2">
+            <TextField
+              label="Tempat Lahir"
+              name="birthPlace"
+              value={form.birthPlace}
+              onChange={(e) => update('birthPlace', e.target.value)}
+              placeholder="Jakarta"
+              maxLength={100}
+            />
+            <TextField
+              label="Tanggal Lahir"
+              name="birthDate"
+              type="date"
+              value={form.birthDate}
+              onChange={(e) => update('birthDate', e.target.value)}
+            />
+            <SelectField
+              label="Gender"
+              name="gender"
+              value={form.gender}
+              onChange={(e) => update('gender', e.target.value)}
+              options={GENDER_OPTIONS}
+            />
+            <SelectField
+              label="Status Pernikahan"
+              name="maritalStatus"
+              value={form.maritalStatus}
+              onChange={(e) => update('maritalStatus', e.target.value)}
+              options={MARITAL_STATUS_OPTIONS}
+            />
+            <div className="sm:col-span-2">
+              <TextField
+                label="Domisili"
+                name="domicile"
+                value={form.domicile}
+                onChange={(e) => update('domicile', e.target.value)}
+                placeholder="Alamat tempat tinggal saat ini"
+                maxLength={255}
+              />
+            </div>
+            <TextField
+              label="No. Identitas (KTP)"
+              name="identityNumber"
+              value={form.identityNumber}
+              onChange={(e) => update('identityNumber', digitsOnly(e.target.value))}
+              placeholder="16 digit NIK"
+              inputMode="numeric"
+              maxLength={16}
+            />
+            <TextField
+              label="No. NPWP"
+              name="npwpNumber"
+              value={form.npwpNumber}
+              onChange={(e) => update('npwpNumber', digitsOnly(e.target.value))}
+              placeholder="15 atau 16 digit"
+              inputMode="numeric"
+              maxLength={16}
+            />
           </div>
         </div>
 
