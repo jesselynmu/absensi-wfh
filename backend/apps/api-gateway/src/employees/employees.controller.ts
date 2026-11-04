@@ -13,6 +13,7 @@ import {
   Post,
   Query,
   UseGuards,
+  ValidationPipe,
 } from '@nestjs/common';
 import { ClientProxy } from '@nestjs/microservices';
 import { CurrentUser } from '../auth/current-user.decorator';
@@ -20,11 +21,12 @@ import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import type { JwtPayload } from '../auth/jwt-payload';
 import { Roles } from '../auth/roles.decorator';
 import { sendToService } from '../common/send-to-service';
-import type { AccountRecord, EmployeeRecord } from '../common/types';
+import type { AccountRecord, EmployeeRecord, PaginatedResult } from '../common/types';
 import { CreateEmployeeDto } from './dto/create-employee.dto';
+import { EmployeeQueryDto } from './dto/employee-query.dto';
 import { UpdateEmployeeDto } from './dto/update-employee.dto';
 import { AllowDuringPasswordChange } from '../auth/allow-during-password-change.decorator';
-import { ApiBearerAuth, ApiOperation, ApiQuery, ApiTags } from '@nestjs/swagger';
+import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 
 @ApiTags('Employees')
 @ApiBearerAuth()
@@ -63,16 +65,26 @@ export class EmployeesController {
 
   @Get()
   @Roles('ADMIN')
-  @ApiOperation({ summary: 'Daftar karyawan (admin)' })
-  @ApiQuery({ name: 'search', required: false, description: 'Cari nama, kode, atau email' })
-  @ApiQuery({ name: 'status', required: false, enum: ['active', 'inactive'] })
-  async findAll(@Query('search') search?: string, @Query('status') status?: string) {
-    const list = await sendToService<EmployeeRecord[]>(
+  @ApiOperation({
+    summary: 'Daftar karyawan (admin)',
+    description: 'Dengan pagination. Pencarian mencakup nama, kode, dan email.',
+  })
+  async findAll(
+    @Query(new ValidationPipe({ transform: true, whitelist: true })) query: EmployeeQueryDto,
+  ) {
+    const result = await sendToService<PaginatedResult<EmployeeRecord>>(
       this.employees,
-      { cmd: 'employee.findAll' },
-      { search, status },
+      { cmd: 'employee.findPage' },
+      {
+        search: query.search?.trim() || undefined,
+        status: query.status,
+        page: query.page,
+        limit: query.limit,
+      },
     );
-    return this.withRoles(list);
+
+    // Role diambil dari auth-service hanya untuk karyawan di halaman ini
+    return { ...result, items: await this.withRoles(result.items) };
   }
 
   @Get(':id')

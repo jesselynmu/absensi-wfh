@@ -22,27 +22,67 @@ const mapDbError = (err: any) => {
   });
 };
 
+export interface EmployeeFilter {
+  search?: string;
+  status?: string;
+}
+
+export interface EmployeePageFilter extends EmployeeFilter {
+  page: number;
+  limit: number;
+}
+
 @Injectable()
 export class EmployeeServiceService {
   constructor(
     @InjectRepository(Employee) private readonly repo: Repository<Employee>,
   ) {}
 
-  findAll(filter: { search?: string; status?: string }) {
+  private buildWhere(filter: EmployeeFilter) {
     const base: FindOptionsWhere<Employee> = {};
     if (filter.status === 'active') base.isActive = true;
     if (filter.status === 'inactive') base.isActive = false;
 
     const keyword = filter.search?.trim();
-    const where = keyword
-      ? [
-          { ...base, fullName: Like(`%${keyword}%`) },
-          { ...base, employeeCode: Like(`%${keyword}%`) },
-          { ...base, email: Like(`%${keyword}%`) },
-        ]
-      : base;
+    if (!keyword) return base;
 
-    return this.repo.find({ where, order: { fullName: 'ASC' } });
+    // Array di `where` artinya OR: cocok di nama, kode, ATAU email
+    return [
+      { ...base, fullName: Like(`%${keyword}%`) },
+      { ...base, employeeCode: Like(`%${keyword}%`) },
+      { ...base, email: Like(`%${keyword}%`) },
+    ];
+  }
+
+  // Tanpa pagination: dipakai gateway untuk mencari id karyawan
+  // saat admin mencari nama di halaman Monitoring Absensi
+  findAll(filter: EmployeeFilter) {
+    return this.repo.find({
+      where: this.buildWhere(filter),
+      order: { fullName: 'ASC', id: 'ASC' },
+    });
+  }
+
+  // Dengan pagination: dipakai halaman Data Karyawan
+  async findPage(filter: EmployeePageFilter) {
+    const page = Math.max(Math.floor(filter.page) || 1, 1);
+    const limit = Math.min(Math.max(Math.floor(filter.limit) || 10, 1), 100);
+
+    const [items, total] = await this.repo.findAndCount({
+      where: this.buildWhere(filter),
+      // id sebagai urutan kedua supaya urutan stabil antar halaman
+      order: { fullName: 'ASC', id: 'ASC' },
+      skip: (page - 1) * limit,
+      take: limit,
+    });
+
+    return {
+      items,
+      total,
+      page,
+      limit,
+      totalPages: Math.max(Math.ceil(total / limit), 1),
+    };
   }
 
   async findOne(id: number) {

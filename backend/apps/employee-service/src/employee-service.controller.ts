@@ -1,6 +1,7 @@
 import { Controller } from '@nestjs/common';
 import { MessagePattern, Payload } from '@nestjs/microservices';
 import { EmployeeServiceService } from './employee-service.service';
+import type { EmployeeFilter, EmployeePageFilter } from './employee-service.service';
 import type { Employee } from './entities/employee.entity';
 
 @Controller()
@@ -8,8 +9,13 @@ export class EmployeeServiceController {
   constructor(private readonly employeeService: EmployeeServiceService) {}
 
   @MessagePattern({ cmd: 'employee.findAll' })
-  findAll(@Payload() filter: { search?: string; status?: string }) {
+  findAll(@Payload() filter: EmployeeFilter) {
     return this.employeeService.findAll(filter);
+  }
+
+  @MessagePattern({ cmd: 'employee.findPage' })
+  findPage(@Payload() filter: EmployeePageFilter) {
+    return this.employeeService.findPage(filter);
   }
 
   @MessagePattern({ cmd: 'employee.findOne' })
