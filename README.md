@@ -27,6 +27,7 @@ Aplikasi web untuk absensi Work From Home karyawan dan monitoring oleh HRD. Kary
 - Karyawan nonaktif tidak bisa login
 - Admin tidak bisa menghapus, menonaktifkan, atau menurunkan role akunnya sendiri
 - Data absensi tidak memiliki endpoint update atau delete sama sekali
+- Foto absensi tidak bisa dibuka lewat URL langsung. Foto hanya bisa diakses lewat API dengan login: admin dapat melihat semua foto, sedangkan karyawan hanya fotonya sendiri
 
 ## Tech Stack
 
@@ -176,6 +177,7 @@ Base URL: `http://localhost:3000/api`. Semua endpoint selain login membutuhkan h
 | GET | `/attendances/me` | Semua | Riwayat absensi sendiri |
 | GET | `/attendances?startDate=&endDate=&employeeId=` | Admin | Monitoring semua absensi |
 | GET | `/dashboard/summary` | Admin | Ringkasan untuk dashboard |
+| GET | `/attendances/:id/photo` | Admin / pemilik | Foto bukti absensi (wajib login) |
 
 ## Struktur Database
 
