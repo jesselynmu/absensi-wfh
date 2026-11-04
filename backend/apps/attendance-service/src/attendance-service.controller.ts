@@ -1,6 +1,7 @@
 import { Controller } from '@nestjs/common';
 import { MessagePattern, Payload } from '@nestjs/microservices';
 import { AttendanceServiceService } from './attendance-service.service';
+import type { AttendanceFilter, AttendancePageFilter } from './attendance-service.service';
 import type { CheckInPayload } from './attendance-service.service';
 
 @Controller()
@@ -18,8 +19,13 @@ export class AttendanceServiceController {
   }
 
   @MessagePattern({ cmd: 'attendance.findAll' })
-  findAll(@Payload() filter: { startDate?: string; endDate?: string; employeeId?: number }) {
+  findAll(@Payload() filter: AttendanceFilter) {
     return this.attendanceService.findAll(filter);
+  }
+
+  @MessagePattern({ cmd: 'attendance.findPage' })
+  findPage(@Payload() filter: AttendancePageFilter) {
+    return this.attendanceService.findPage(filter);
   }
 
   @MessagePattern({ cmd: 'attendance.countByEmployee' })

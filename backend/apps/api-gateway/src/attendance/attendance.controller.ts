@@ -13,6 +13,7 @@ import {
   UploadedFile,
   UseGuards,
   UseInterceptors,
+  ValidationPipe,
 } from '@nestjs/common';
 import { ClientProxy } from '@nestjs/microservices';
 import { FileInterceptor } from '@nestjs/platform-express';
@@ -22,7 +23,6 @@ import {
   ApiConsumes,
   ApiOperation,
   ApiProduces,
-  ApiQuery,
   ApiTags,
 } from '@nestjs/swagger';
 import type { Response } from 'express';
@@ -35,7 +35,8 @@ import type { JwtPayload } from '../auth/jwt-payload';
 import { Roles } from '../auth/roles.decorator';
 import { attachEmployees } from '../common/attach-employees';
 import { sendToService } from '../common/send-to-service';
-import type { AttendanceRecord } from '../common/types';
+import type { AttendanceRecord, EmployeeRecord, PaginatedResult } from '../common/types';
+import { AttendanceQueryDto } from './dto/attendance-query.dto';
 import { CheckInDto } from './dto/check-in.dto';
 
 export const UPLOAD_DIR = join(process.cwd(), 'uploads');
@@ -139,37 +140,40 @@ export class AttendanceController {
   @Roles('ADMIN')
   @ApiOperation({
     summary: 'Monitoring semua absensi (admin)',
-    description: 'View only. Tidak ada endpoint untuk mengubah atau menghapus data absensi.',
-  })
-  @ApiQuery({
-    name: 'startDate',
-    required: false,
-    description: 'Tanggal awal (YYYY-MM-DD)',
-    example: '2026-11-01',
-  })
-  @ApiQuery({
-    name: 'endDate',
-    required: false,
-    description: 'Tanggal akhir (YYYY-MM-DD)',
-    example: '2026-11-30',
-  })
-  @ApiQuery({
-    name: 'employeeId',
-    required: false,
-    type: Number,
-    description: 'Filter berdasarkan id karyawan',
+    description:
+      'View only, dengan pagination. Pencarian mencakup nama, kode, dan email karyawan.',
   })
   async findAll(
-    @Query('startDate') startDate?: string,
-    @Query('endDate') endDate?: string,
-    @Query('employeeId') employeeId?: string,
+    @Query(new ValidationPipe({ transform: true, whitelist: true })) query: AttendanceQueryDto,
   ) {
-    const records = await sendToService<AttendanceRecord[]>(
+    const { startDate, endDate, page, limit } = query;
+    const search = query.search?.trim();
+
+    // Langkah 1: kalau ada kata kunci, cari id karyawan yang cocok di employee-service
+    let employeeIds: number[] | undefined;
+    if (search) {
+      const matches = await sendToService<EmployeeRecord[]>(
+        this.employees,
+        { cmd: 'employee.findAll' },
+        { search },
+      );
+      employeeIds = matches.map((employee) => employee.id);
+
+      // Tidak ada karyawan yang cocok: tidak perlu bertanya ke attendance-service
+      if (employeeIds.length === 0) {
+        return { items: [], total: 0, page, limit, totalPages: 1 };
+      }
+    }
+
+    // Langkah 2: ambil satu halaman data absensi
+    const result = await sendToService<PaginatedResult<AttendanceRecord>>(
       this.client,
-      { cmd: 'attendance.findAll' },
-      { startDate, endDate, employeeId: employeeId ? Number(employeeId) : undefined },
+      { cmd: 'attendance.findPage' },
+      { startDate, endDate, employeeIds, page, limit },
     );
-    return attachEmployees(this.employees, records);
+
+    // Langkah 3: tempelkan nama karyawan ke setiap baris
+    return { ...result, items: await attachEmployees(this.employees, result.items) };
   }
 
   @Get(':id/photo')

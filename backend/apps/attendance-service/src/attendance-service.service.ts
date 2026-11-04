@@ -1,8 +1,27 @@
 import { HttpStatus, Injectable } from '@nestjs/common';
 import { RpcException } from '@nestjs/microservices';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Between, FindOptionsWhere, LessThanOrEqual, MoreThanOrEqual, Repository } from 'typeorm';
+import {
+  Between,
+  FindOptionsWhere,
+  In,
+  LessThanOrEqual,
+  MoreThanOrEqual,
+  Repository,
+} from 'typeorm';
 import { Attendance } from './entities/attendance.entity';
+
+export interface AttendanceFilter {
+  startDate?: string;
+  endDate?: string;
+  employeeId?: number;
+  employeeIds?: number[];
+}
+
+export interface AttendancePageFilter extends AttendanceFilter {
+  page: number;
+  limit: number;
+}
 
 const todayInJakarta = () =>
   new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Jakarta' }).format(new Date());
@@ -70,9 +89,14 @@ export class AttendanceServiceService {
     });
   }
 
-  findAll(filter: { startDate?: string; endDate?: string; employeeId?: number }) {
+  private buildWhere(filter: AttendanceFilter) {
     const where: FindOptionsWhere<Attendance> = {};
-    if (filter.employeeId) where.employeeId = filter.employeeId;
+
+    if (filter.employeeIds) {
+      where.employeeId = In(filter.employeeIds);
+    } else if (filter.employeeId) {
+      where.employeeId = filter.employeeId;
+    }
 
     if (filter.startDate && filter.endDate) {
       where.attendanceDate = Between(filter.startDate, filter.endDate);
@@ -82,11 +106,38 @@ export class AttendanceServiceService {
       where.attendanceDate = LessThanOrEqual(filter.endDate);
     }
 
+    return where;
+  }
+
+  // Dipakai dashboard (absensi hari ini), tanpa pagination
+  findAll(filter: AttendanceFilter) {
     return this.repo.find({
-      where,
+      where: this.buildWhere(filter),
       order: { attendanceDate: 'DESC', checkInTime: 'DESC' },
       take: 500,
     });
+  }
+
+  // Dipakai halaman monitoring admin, dengan pagination
+  async findPage(filter: AttendancePageFilter) {
+    // Batasi lagi di sini sebagai lapis pengaman kedua
+    const page = Math.max(Math.floor(filter.page) || 1, 1);
+    const limit = Math.min(Math.max(Math.floor(filter.limit) || 20, 1), 100);
+
+    const [items, total] = await this.repo.findAndCount({
+      where: this.buildWhere(filter),
+      order: { attendanceDate: 'DESC', checkInTime: 'DESC' },
+      skip: (page - 1) * limit,
+      take: limit,
+    });
+
+    return {
+      items,
+      total,
+      page,
+      limit,
+      totalPages: Math.max(Math.ceil(total / limit), 1),
+    };
   }
 
   async countByEmployee(employeeId: number) {
