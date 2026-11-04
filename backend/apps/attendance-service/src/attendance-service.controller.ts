@@ -31,4 +31,9 @@ export class AttendanceServiceController {
   checkIn(@Payload() data: CheckInPayload) {
     return this.attendanceService.checkIn(data);
   }
+
+  @MessagePattern({ cmd: 'attendance.findOne' })
+  findOne(@Payload() data: { id: number }) {
+    return this.attendanceService.findOne(data.id);
+  }
 }

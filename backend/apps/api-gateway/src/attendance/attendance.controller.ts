@@ -4,17 +4,22 @@ import {
   Controller,
   Get,
   Inject,
+  NotFoundException,
+  Param,
+  ParseIntPipe,
   Post,
   Query,
+  Res,
   UploadedFile,
   UseGuards,
   UseInterceptors,
 } from '@nestjs/common';
 import { ClientProxy } from '@nestjs/microservices';
 import { FileInterceptor } from '@nestjs/platform-express';
+import type { Response } from 'express';
 import { unlink } from 'fs/promises';
 import { diskStorage } from 'multer';
-import { extname, join } from 'path';
+import { basename, extname, join } from 'path';
 import { CurrentUser } from '../auth/current-user.decorator';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import type { JwtPayload } from '../auth/jwt-payload';
@@ -104,5 +109,32 @@ export class AttendanceController {
       { startDate, endDate, employeeId: employeeId ? Number(employeeId) : undefined },
     );
     return attachEmployees(this.employees, records);
+  }
+
+  @Get(':id/photo')
+  async photo(
+    @Param('id', ParseIntPipe) id: number,
+    @CurrentUser() user: JwtPayload,
+    @Res() res: Response,
+  ) {
+    const attendance = await sendToService<AttendanceRecord>(
+      this.client,
+      { cmd: 'attendance.findOne' },
+      { id },
+    );
+
+    // Admin boleh melihat semua foto, karyawan hanya fotonya sendiri.
+    // Sengaja 404 (bukan 403) supaya tidak ketahuan bahwa id itu ada.
+    const isOwner = attendance.employeeId === user.employeeId;
+    if (user.role !== 'ADMIN' && !isOwner) {
+      throw new NotFoundException('Data absensi tidak ditemukan');
+    }
+
+    const filePath = join(UPLOAD_DIR, basename(attendance.photoPath));
+    res.sendFile(filePath, { headers: { 'Cache-Control': 'private, no-store' } }, (err) => {
+      if (err && !res.headersSent) {
+        res.status(404).json({ message: 'File foto tidak ditemukan' });
+      }
+    });
   }
 }

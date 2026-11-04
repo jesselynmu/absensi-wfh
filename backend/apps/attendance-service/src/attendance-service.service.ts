@@ -92,4 +92,15 @@ export class AttendanceServiceService {
   async countByEmployee(employeeId: number) {
     return { count: await this.repo.count({ where: { employeeId } }) };
   }
+
+  async findOne(id: number) {
+    const attendance = await this.repo.findOne({ where: { id } });
+    if (!attendance) {
+      throw new RpcException({
+        statusCode: HttpStatus.NOT_FOUND,
+        message: 'Data absensi tidak ditemukan',
+      });
+    }
+    return attendance;
+  }
 }
