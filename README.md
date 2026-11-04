@@ -19,7 +19,7 @@ Aplikasi web untuk absensi Work From Home karyawan dan monitoring oleh HRD. Kary
   - Reset password karyawan
   - Karyawan wajib mengganti password sementara saat login pertama kali dan setelah password di-reset
   - Data pribadi: domisili, tempat dan tanggal lahir, gender, status pernikahan, No. KTP, dan No. NPWP
-- Monitoring absensi dengan filter tanggal dan karyawan, termasuk melihat foto bukti (view only)
+- Monitoring absensi dengan filter tanggal, pencarian nama/kode/email karyawan, dan pagination. Foto bukti baru dimuat saat dibuka (view only)
 - Tetap bisa absen untuk dirinya sendiri lewat menu "Absensi Saya"
 
 **Aturan bisnis**
@@ -184,7 +184,7 @@ Base URL: `http://localhost:3000/api`. Semua endpoint selain login membutuhkan h
 | POST | `/attendances/check-in` | Semua | Absen dengan foto (multipart/form-data) |
 | GET | `/attendances/today` | Semua | Status absensi hari ini |
 | GET | `/attendances/me` | Semua | Riwayat absensi sendiri |
-| GET | `/attendances?startDate=&endDate=&employeeId=` | Admin | Monitoring semua absensi |
+| GET | `/attendances?startDate=&endDate=&search=&page=&limit=` | Admin | Monitoring semua absensi dengan pagination dan pencarian nama karyawan |
 | GET | `/dashboard/summary` | Admin | Ringkasan untuk dashboard |
 | GET | `/attendances/:id/photo` | Admin / pemilik | Foto bukti absensi (wajib login) |
 
