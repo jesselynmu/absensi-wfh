@@ -8,7 +8,7 @@ Aplikasi web untuk absensi Work From Home karyawan dan monitoring oleh HRD. Kary
 - Login dengan akun yang dibuatkan HRD
 - Absen harian dengan foto dari kamera, tanggal dan waktu otomatis (WIB), serta lokasi (GPS dan alamat)
 - Foto diberi watermark berisi waktu, tanggal, lokasi, dan email karyawan
-- Riwayat absensi pribadi
+- Riwayat absensi pribadi dengan filter rentang tanggal
 - Ganti password sendiri
 
 **Admin HRD**
@@ -183,7 +183,7 @@ Base URL: `http://localhost:3000/api`. Semua endpoint selain login membutuhkan h
 | POST | `/employees/:id/reset-password` | Admin | Buat password sementara baru |
 | POST | `/attendances/check-in` | Semua | Absen dengan foto (multipart/form-data) |
 | GET | `/attendances/today` | Semua | Status absensi hari ini |
-| GET | `/attendances/me` | Semua | Riwayat absensi sendiri |
+| GET | `/attendances/me?startDate=&endDate=` | Semua | Riwayat absensi sendiri, bisa difilter berdasarkan tanggal |
 | GET | `/attendances?startDate=&endDate=&search=&page=&limit=` | Admin | Monitoring semua absensi dengan pagination dan pencarian nama karyawan |
 | GET | `/dashboard/summary` | Admin | Ringkasan untuk dashboard |
 | GET | `/attendances/:id/photo` | Admin / pemilik | Foto bukti absensi (wajib login) |
