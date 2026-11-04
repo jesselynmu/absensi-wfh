@@ -102,13 +102,17 @@ cd absensi-wfh
 
 ### 2. Siapkan database
 
-Import `database/schema.sql` ke MySQL:
+Jalankan dua file berikut **secara berurutan**:
 
 ```bash
 mysql -u root -p < database/schema.sql
+mysql -u root -p < database/seed.sql
 ```
 
-Atau buka file tersebut di MySQL Workbench / DBeaver lalu jalankan.
+- `schema.sql` membuat database `absensi_wfh` beserta tabel-tabelnya.
+- `seed.sql` mengisi data awal berupa akun demo (lihat bagian [Akun Demo](#akun-demo)). Semua datanya fiktif.
+
+Kalau memakai MySQL Workbench, DBeaver, atau phpMyAdmin, buka dan jalankan kedua file tersebut dengan urutan yang sama.
 
 ### 3. Atur environment
 
@@ -141,13 +145,16 @@ Log gateway mungkin sempat menampilkan error koneksi selama beberapa detik di aw
 
 ## Akun Demo
 
-| Role | Email | Password |
-| --- | --- | --- |
-| Admin HRD | admin@company.com | admin123 |
+Tersedia setelah menjalankan `database/seed.sql`.
 
-<!-- CEK: pastikan sesuai seed data, dan jelaskan cara seed dijalankan kalau tidak otomatis -->
+| Role | Email | Password | Keterangan |
+| --- | --- | --- | --- |
+| Admin HRD | admin@company.com | admin123 | |
+| Karyawan | budi@company.com | karyawan123 | |
+| Karyawan | siti@company.com | karyawan123 | |
+| Karyawan | andi@company.com | karyawan123 | Nonaktif, untuk mencoba penolakan login |
 
-Akun karyawan bisa dibuat lewat menu **Data Karyawan**. Password awal ditampilkan satu kali setelah data disimpan.
+Akun karyawan baru juga bisa dibuat lewat menu **Data Karyawan**. Password awalnya dibuat acak oleh sistem dan ditampilkan satu kali setelah data disimpan.
 
 ## Endpoint API
 
