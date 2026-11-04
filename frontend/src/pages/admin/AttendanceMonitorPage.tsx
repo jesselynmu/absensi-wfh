@@ -1,4 +1,4 @@
-import { Eye, MapPin, RotateCcw } from 'lucide-react'; // BARU: MapPin
+import { Eye, MapPin, RotateCcw } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { api, getErrorMessage } from '../../api/client';
 import { Alert } from '../../components/Alert';
@@ -6,11 +6,12 @@ import { Avatar } from '../../components/Avatar';
 import { Badge } from '../../components/Badge';
 import { Modal } from '../../components/Modal';
 import { PageHeader } from '../../components/PageHeader';
+import { Pagination } from '../../components/Pagination';
 import { SecureImage } from '../../components/SecureImage';
-import { SelectField } from '../../components/SelectField';
 import { TextField } from '../../components/TextField';
+import { useDebouncedValue } from '../../hooks/useDebouncedValue';
 import type { AttendanceWithEmployee } from '../../types/attendance';
-import type { Employee } from '../../types/employee';
+import type { PaginatedResult } from '../../types/pagination';
 import {
   attendancePhotoPath,
   daysAgo,
@@ -20,54 +21,88 @@ import {
   toISODate,
 } from '../../utils/format';
 
+const PAGE_SIZE_OPTIONS = [10, 20, 50];
+
 const defaultFilter = () => ({
   startDate: daysAgo(6),
   endDate: toISODate(new Date()),
-  employeeId: '',
+  search: '',
 });
+
+type Filter = ReturnType<typeof defaultFilter>;
+
+const emptyResult: PaginatedResult<AttendanceWithEmployee> = {
+  items: [],
+  total: 0,
+  page: 1,
+  limit: 20,
+  totalPages: 1,
+};
 
 export function AttendanceMonitorPage() {
   const [filter, setFilter] = useState(defaultFilter);
-  const [records, setRecords] = useState<AttendanceWithEmployee[]>([]);
-  const [employees, setEmployees] = useState<Employee[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [page, setPage] = useState(1);
+  const [limit, setLimit] = useState(20);
+  const [result, setResult] = useState(emptyResult);
   const [error, setError] = useState('');
   const [preview, setPreview] = useState<AttendanceWithEmployee | null>(null);
 
-  useEffect(() => {
-    api
-      .get<Employee[]>('/employees')
-      .then((res) => setEmployees(res.data))
-      .catch(() => undefined);
-  }, []);
+  // Request baru dikirim setelah admin berhenti mengetik selama 400 ms
+  const search = useDebouncedValue(filter.search.trim(), 400);
+
+  // Semua parameter request dijadikan satu "kunci". Halaman dianggap
+  // sedang memuat selama data yang tampil belum sesuai kunci terbaru.
+  const requestKey = JSON.stringify({
+    startDate: filter.startDate || undefined,
+    endDate: filter.endDate || undefined,
+    search: search || undefined,
+    page,
+    limit,
+  });
+  const [loadedKey, setLoadedKey] = useState<string | null>(null);
+  const loading = loadedKey !== requestKey;
 
   useEffect(() => {
     let cancelled = false;
+
     api
-      .get<AttendanceWithEmployee[]>('/attendances', {
-        params: {
-          startDate: filter.startDate || undefined,
-          endDate: filter.endDate || undefined,
-          employeeId: filter.employeeId || undefined,
-        },
+      .get<PaginatedResult<AttendanceWithEmployee>>('/attendances', {
+        params: JSON.parse(requestKey),
       })
       .then((res) => {
-        if (!cancelled) {
-          setRecords(res.data);
-          setError('');
-        }
+        if (cancelled) return;
+        setResult(res.data);
+        setError('');
+        setLoadedKey(requestKey);
       })
-      .catch((err) => !cancelled && setError(getErrorMessage(err)))
-      .finally(() => !cancelled && setLoading(false));
+      .catch((err) => {
+        if (cancelled) return;
+        setError(getErrorMessage(err));
+        setLoadedKey(requestKey);
+      });
+
     return () => {
       cancelled = true;
     };
-  }, [filter]);
+  }, [requestKey]);
 
-  const updateFilter = (field: keyof ReturnType<typeof defaultFilter>, value: string) => {
-    setLoading(true);
+  // Setiap filter berubah, kembali ke halaman 1
+  const updateFilter = (field: keyof Filter, value: string) => {
     setFilter((prev) => ({ ...prev, [field]: value }));
+    setPage(1);
   };
+
+  const resetFilter = () => {
+    setFilter(defaultFilter());
+    setPage(1);
+  };
+
+  const changeLimit = (value: number) => {
+    setLimit(value);
+    setPage(1);
+  };
+
+  const { items, total, totalPages } = result;
 
   return (
     <div className="space-y-6">
@@ -79,6 +114,14 @@ export function AttendanceMonitorPage() {
 
       <section className="rounded-xl bg-white p-4 shadow-sm">
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4 lg:items-end">
+          <TextField
+            label="Cari karyawan"
+            name="search"
+            value={filter.search}
+            onChange={(e) => updateFilter('search', e.target.value)}
+            placeholder="Nama, kode, atau email"
+            maxLength={100}
+          />
           <TextField
             label="Dari tanggal"
             name="startDate"
@@ -95,25 +138,9 @@ export function AttendanceMonitorPage() {
             min={filter.startDate || undefined}
             onChange={(e) => updateFilter('endDate', e.target.value)}
           />
-          <SelectField
-            label="Karyawan"
-            name="employeeId"
-            value={filter.employeeId}
-            onChange={(e) => updateFilter('employeeId', e.target.value)}
-            options={[
-              { value: '', label: 'Semua karyawan' },
-              ...employees.map((emp) => ({
-                value: String(emp.id),
-                label: `${emp.fullName} (${emp.employeeCode})`,
-              })),
-            ]}
-          />
           <button
             type="button"
-            onClick={() => {
-              setLoading(true);
-              setFilter(defaultFilter());
-            }}
+            onClick={resetFilter}
             className="flex items-center justify-center gap-2 rounded-lg border border-gray-300 px-4 py-2.5 font-medium text-gray-700 hover:bg-gray-50"
           >
             <RotateCcw size={16} />
@@ -125,12 +152,26 @@ export function AttendanceMonitorPage() {
       {error && <Alert>{error}</Alert>}
 
       <section className="rounded-xl bg-white shadow-sm">
-        <div className="border-b border-gray-100 px-4 py-3 text-sm text-gray-500">
-          {loading ? 'Memuat data...' : `Menampilkan ${records.length} data absensi`}
+        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-gray-100 px-4 py-3 text-sm text-gray-500">
+          <span>{loading ? 'Memuat data...' : `${total} data absensi ditemukan`}</span>
+          <label className="flex items-center gap-2">
+            Tampilkan
+            <select
+              value={limit}
+              onChange={(e) => changeLimit(Number(e.target.value))}
+              className="rounded-lg border border-gray-300 bg-white px-2 py-1.5 text-gray-700 outline-none focus:ring-2 focus:ring-brand-400"
+            >
+              {PAGE_SIZE_OPTIONS.map((size) => (
+                <option key={size} value={size}>
+                  {size}
+                </option>
+              ))}
+            </select>
+            per halaman
+          </label>
         </div>
 
         <div className="overflow-x-auto">
-          {/* BARU: lebar minimum dinaikkan karena ada kolom tambahan */}
           <table className="w-full min-w-[880px] text-left text-sm">
             <thead className="bg-gray-50 text-gray-500">
               <tr>
@@ -138,21 +179,24 @@ export function AttendanceMonitorPage() {
                 <th className="px-4 py-3 font-medium">Karyawan</th>
                 <th className="px-4 py-3 font-medium">Departemen</th>
                 <th className="px-4 py-3 font-medium">Jam Masuk</th>
-                <th className="px-4 py-3 font-medium">Lokasi</th> {/* BARU */}
+                <th className="px-4 py-3 font-medium">Lokasi</th>
                 <th className="px-4 py-3 font-medium">Catatan</th>
                 <th className="px-4 py-3 font-medium">Foto</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-gray-100">
-              {!loading && records.length === 0 ? (
+            <tbody
+              className={`divide-y divide-gray-100 transition-opacity ${
+                loading ? 'opacity-50' : ''
+              }`}
+            >
+              {items.length === 0 ? (
                 <tr>
-                  {/* BARU: colSpan 6 → 7 karena jumlah kolom bertambah */}
                   <td colSpan={7} className="px-4 py-8 text-center text-gray-500">
-                    Tidak ada data absensi pada filter ini.
+                    {loading ? 'Memuat data...' : 'Tidak ada data absensi pada filter ini.'}
                   </td>
                 </tr>
               ) : (
-                records.map((item) => (
+                items.map((item) => (
                   <tr key={item.id} className="hover:bg-gray-50">
                     <td className="whitespace-nowrap px-4 py-3 text-gray-700">
                       {formatDate(item.attendanceDate)}
@@ -172,8 +216,6 @@ export function AttendanceMonitorPage() {
                     <td className="whitespace-nowrap px-4 py-3 font-medium tabular-nums text-gray-900">
                       {formatTime(item.checkInTime)}
                     </td>
-
-                    {/* BARU: kolom lokasi, link ke Google Maps */}
                     <td className="max-w-[240px] px-4 py-3">
                       {item.latitude !== null && item.longitude !== null ? (
                         <a
@@ -190,27 +232,20 @@ export function AttendanceMonitorPage() {
                         <span className="text-gray-400">Tidak tersedia</span>
                       )}
                     </td>
-
                     <td className="max-w-[220px] px-4 py-3 text-gray-600">
                       <p className="truncate" title={item.notes ?? undefined}>
                         {item.notes ?? '-'}
                       </p>
                     </td>
                     <td className="px-4 py-3">
+                      {/* Foto baru dimuat saat popup dibuka, bukan saat tabel tampil */}
                       <button
                         type="button"
                         onClick={() => setPreview(item)}
-                        className="group relative block h-12 w-12 overflow-hidden rounded-lg"
-                        aria-label="Lihat foto bukti"
+                        className="flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 font-medium text-brand-600 hover:bg-brand-50"
                       >
-                        <SecureImage
-                          path={attendancePhotoPath(item.id)}
-                          alt=""
-                          className="h-full w-full object-cover"
-                        />
-                        <span className="absolute inset-0 grid place-items-center bg-black/40 text-white opacity-0 transition group-hover:opacity-100">
-                          <Eye size={16} />
-                        </span>
+                        <Eye size={16} />
+                        Lihat
                       </button>
                     </td>
                   </tr>
@@ -218,6 +253,17 @@ export function AttendanceMonitorPage() {
               )}
             </tbody>
           </table>
+        </div>
+
+        <div className="border-t border-gray-100 px-4 py-3">
+          <Pagination
+            page={page}
+            totalPages={totalPages}
+            total={total}
+            limit={limit}
+            onPageChange={setPage}
+            disabled={loading}
+          />
         </div>
       </section>
 
@@ -236,7 +282,6 @@ export function AttendanceMonitorPage() {
             {formatDate(preview.attendanceDate)} · pukul {formatTime(preview.checkInTime)} WIB
           </p>
 
-          {/* BARU: lokasi juga ditampilkan di popup foto */}
           {preview.latitude !== null && preview.longitude !== null ? (
             <a
               href={mapsUrl(preview.latitude, preview.longitude)}
