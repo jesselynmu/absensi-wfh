@@ -5,9 +5,14 @@ export interface AuthUser {
   email: string;
   role: UserRole;
   employeeId: number;
+  mustChangePassword: boolean;
 }
 
 export interface LoginResponse {
   accessToken: string;
   user: AuthUser;
+}
+
+export interface ChangePasswordResponse extends LoginResponse {
+  message: string;
 }

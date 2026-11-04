@@ -1,4 +1,4 @@
-import { createContext, useContext, useState } from 'react';
+import { createContext, useCallback, useContext, useState } from 'react';
 import type { ReactNode } from 'react';
 import { api } from '../api/client';
 import type { AuthUser, LoginResponse } from '../types/auth';
@@ -6,6 +6,7 @@ import type { AuthUser, LoginResponse } from '../types/auth';
 interface AuthContextValue {
   user: AuthUser | null;
   login: (email: string, password: string) => Promise<void>;
+  applySession: (session: LoginResponse) => void;
   logout: () => void;
 }
 
@@ -19,21 +20,29 @@ function loadUser(): AuthUser | null {
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<AuthUser | null>(loadUser);
 
-  const login = async (email: string, password: string) => {
-    const { data } = await api.post<LoginResponse>('/auth/login', { email, password });
-    localStorage.setItem('token', data.accessToken);
-    localStorage.setItem('user', JSON.stringify(data.user));
-    setUser(data.user);
-  };
+  // Simpan token dan data user, dipakai saat login maupun setelah ganti password
+  const applySession = useCallback((session: LoginResponse) => {
+    localStorage.setItem('token', session.accessToken);
+    localStorage.setItem('user', JSON.stringify(session.user));
+    setUser(session.user);
+  }, []);
 
-  const logout = () => {
+  const login = useCallback(
+    async (email: string, password: string) => {
+      const { data } = await api.post<LoginResponse>('/auth/login', { email, password });
+      applySession(data);
+    },
+    [applySession],
+  );
+
+  const logout = useCallback(() => {
     localStorage.removeItem('token');
     localStorage.removeItem('user');
     setUser(null);
-  };
+  }, []);
 
   return (
-    <AuthContext.Provider value={{ user, login, logout }}>
+    <AuthContext.Provider value={{ user, login, applySession, logout }}>
       {children}
     </AuthContext.Provider>
   );

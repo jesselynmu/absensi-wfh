@@ -1,10 +1,13 @@
-import { ShieldCheck } from 'lucide-react';
+import { ShieldAlert, ShieldCheck } from 'lucide-react';
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { api, getErrorMessage } from '../api/client';
 import { Alert } from '../components/Alert';
 import { Button } from '../components/Button';
 import { PageHeader } from '../components/PageHeader';
 import { PasswordField } from '../components/PasswordField';
+import { useAuth } from '../context/AuthContext';
+import type { ChangePasswordResponse } from '../types/auth';
 
 type Field = 'currentPassword' | 'newPassword' | 'confirmPassword';
 
@@ -15,6 +18,10 @@ const emptyForm: Record<Field, string> = {
 };
 
 export function ChangePasswordPage() {
+  const { user, applySession } = useAuth();
+  const navigate = useNavigate();
+  const isForced = user?.mustChangePassword ?? false;
+
   const [form, setForm] = useState(emptyForm);
   const [fieldErrors, setFieldErrors] = useState<Partial<Record<Field, string>>>({});
   const [error, setError] = useState('');
@@ -50,10 +57,19 @@ export function ChangePasswordPage() {
 
     setSaving(true);
     try {
-      await api.post('/auth/change-password', {
+      const { data } = await api.post<ChangePasswordResponse>('/auth/change-password', {
         currentPassword: form.currentPassword,
         newPassword: form.newPassword,
       });
+
+      // Simpan token baru yang sudah tidak membawa status wajib ganti password
+      applySession(data);
+
+      if (isForced) {
+        navigate('/', { replace: true });
+        return;
+      }
+
       setSuccess('Password berhasil diubah. Gunakan password baru saat login berikutnya.');
       setForm(emptyForm);
     } catch (err) {
@@ -65,7 +81,27 @@ export function ChangePasswordPage() {
 
   return (
     <div className="space-y-6">
-      <PageHeader title="Ganti Password" description="Perbarui password akun Anda secara berkala." />
+      <PageHeader
+        title="Ganti Password"
+        description={
+          isForced
+            ? 'Buat password baru sebelum mulai menggunakan aplikasi.'
+            : 'Perbarui password akun Anda secara berkala.'
+        }
+      />
+
+      {isForced && (
+        <div className="flex items-start gap-3 rounded-xl border border-amber-200 bg-amber-50 p-4 text-amber-800">
+          <ShieldAlert size={20} className="mt-0.5 shrink-0" />
+          <div>
+            <p className="font-semibold">Anda wajib mengganti password</p>
+            <p className="mt-1 text-sm">
+              Akun Anda masih memakai password sementara dari HRD. Masukkan password tersebut
+              sebagai password lama, lalu buat password baru milik Anda sendiri.
+            </p>
+          </div>
+        </div>
+      )}
 
       <div className="grid gap-6 lg:grid-cols-[1fr_320px]">
         <form

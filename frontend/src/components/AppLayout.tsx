@@ -26,7 +26,10 @@ export function AppLayout() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [fullName, setFullName] = useState<string | null>(null);
 
-  const items = navItems.filter((item) => !item.adminOnly || user?.role === 'ADMIN');
+  // Selama wajib ganti password, menu disembunyikan (tombol Keluar tetap ada)
+  const items = user?.mustChangePassword
+    ? []
+    : navItems.filter((item) => !item.adminOnly || user?.role === 'ADMIN');
 
   useEffect(() => {
     api

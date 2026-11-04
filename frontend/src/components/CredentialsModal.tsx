@@ -46,7 +46,8 @@ export function CredentialsModal({ title, credentials, onClose }: CredentialsMod
         </div>
 
         <div className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2.5 text-sm text-amber-800">
-          Password ini hanya ditampilkan sekali. Simpan atau salin sekarang sebelum menutup jendela ini.
+          Password ini hanya ditampilkan sekali. Simpan atau salin sekarang sebelum menutup jendela
+          ini. Karyawan akan diminta membuat password baru saat login pertama kali.
         </div>
 
         <div className="flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
