@@ -1,42 +1,51 @@
-import { MapPin } from 'lucide-react';
+import { MapPin, RotateCcw } from 'lucide-react';
 import { useCallback, useEffect, useState } from 'react';
 import { api, getErrorMessage } from '../api/client';
+import { Alert } from '../components/Alert';
 import { Button } from '../components/Button';
 import { LiveClock } from '../components/LiveClock';
+import { Modal } from '../components/Modal';
 import { PageHeader } from '../components/PageHeader';
 import { PhotoCapture } from '../components/PhotoCapture';
+import { SecureImage } from '../components/SecureImage';
+import { TextField } from '../components/TextField';
 import { useAuth } from '../context/AuthContext';
 import type { Attendance } from '../types/attendance';
-import { SecureImage } from '../components/SecureImage';
 import { attendancePhotoPath, formatDate, formatTime, mapsUrl } from '../utils/format';
 import { describeGeoError, getGeoInfo } from '../utils/location';
 import type { GeoInfo } from '../utils/location';
-import { Modal } from '../components/Modal';
 
 type GeoStatus = 'loading' | 'ready' | 'unavailable';
 
+const FILTERED_LIMIT = 100;
+const emptyHistoryFilter = { startDate: '', endDate: '' };
+
 export function AttendancePage() {
   const { user } = useAuth();
+
+  // Absen hari ini
   const [today, setToday] = useState<Attendance | null>(null);
-  const [history, setHistory] = useState<Attendance[]>([]);
   const [loading, setLoading] = useState(true);
   const [photo, setPhoto] = useState<File | null>(null);
   const [notes, setNotes] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
+
+  // Riwayat
+  const [history, setHistory] = useState<Attendance[]>([]);
+  const [historyFilter, setHistoryFilter] = useState(emptyHistoryFilter);
+  const [historyReload, setHistoryReload] = useState(0);
+  const [historyError, setHistoryError] = useState('');
   const [preview, setPreview] = useState<Attendance | null>(null);
 
+  // Lokasi
   const [geo, setGeo] = useState<GeoInfo | null>(null);
   const [geoStatus, setGeoStatus] = useState<GeoStatus>('loading');
   const [geoMessage, setGeoMessage] = useState('');
 
-  const loadData = useCallback(async () => {
-    const [todayRes, historyRes] = await Promise.all([
-      api.get<{ attendance: Attendance | null }>('/attendances/today'),
-      api.get<Attendance[]>('/attendances/me'),
-    ]);
-    setToday(todayRes.data.attendance);
-    setHistory(historyRes.data);
+  const loadToday = useCallback(async () => {
+    const { data } = await api.get<{ attendance: Attendance | null }>('/attendances/today');
+    setToday(data.attendance);
   }, []);
 
   const fetchLocation = useCallback(
@@ -55,11 +64,49 @@ export function AttendancePage() {
   );
 
   useEffect(() => {
-    loadData()
+    loadToday()
       .catch((err) => setError(getErrorMessage(err)))
       .finally(() => setLoading(false));
     void fetchLocation();
-  }, [loadData, fetchLocation]);
+  }, [loadToday, fetchLocation]);
+
+  // ---- Riwayat: dimuat ulang setiap filter tanggal berubah ----
+  const isFiltered = Boolean(historyFilter.startDate || historyFilter.endDate);
+
+  const historyKey = JSON.stringify({
+    params: {
+      startDate: historyFilter.startDate || undefined,
+      endDate: historyFilter.endDate || undefined,
+    },
+    reload: historyReload,
+  });
+  const [historyLoadedKey, setHistoryLoadedKey] = useState<string | null>(null);
+  const historyLoading = historyLoadedKey !== historyKey;
+
+  useEffect(() => {
+    let cancelled = false;
+
+    api
+      .get<Attendance[]>('/attendances/me', { params: JSON.parse(historyKey).params })
+      .then(({ data }) => {
+        if (cancelled) return;
+        setHistory(data);
+        setHistoryError('');
+        setHistoryLoadedKey(historyKey);
+      })
+      .catch((err) => {
+        if (cancelled) return;
+        setHistoryError(getErrorMessage(err));
+        setHistoryLoadedKey(historyKey);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [historyKey]);
+
+  const updateHistoryFilter = (field: keyof typeof emptyHistoryFilter, value: string) =>
+    setHistoryFilter((prev) => ({ ...prev, [field]: value }));
 
   const retryLocation = () => {
     setGeoStatus('loading');
@@ -114,13 +161,20 @@ export function AttendancePage() {
       await api.post('/attendances/check-in', form);
       setPhoto(null);
       setNotes('');
-      await loadData();
+      await loadToday();
+      setHistoryReload((n) => n + 1);
     } catch (err) {
       setError(getErrorMessage(err));
     } finally {
       setSubmitting(false);
     }
   };
+
+  const historyCaption = historyLoading
+    ? 'Memuat riwayat...'
+    : isFiltered
+      ? `${history.length} absensi ditemukan`
+      : 'Menampilkan 30 absensi terakhir';
 
   return (
     <div className="space-y-6">
@@ -237,11 +291,67 @@ export function AttendancePage() {
       </section>
 
       <section className="rounded-xl bg-white p-6 shadow-sm">
-        <h2 className="mb-4 text-lg font-bold text-gray-900">Riwayat Absensi</h2>
+        <div className="mb-4 flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+          <div>
+            <h2 className="text-lg font-bold text-gray-900">Riwayat Absensi</h2>
+            <p className="mt-1 text-sm text-gray-500">{historyCaption}</p>
+          </div>
+
+          <div className="grid grid-cols-2 gap-3 sm:flex sm:items-end">
+            <TextField
+              label="Dari tanggal"
+              name="historyStartDate"
+              type="date"
+              value={historyFilter.startDate}
+              max={historyFilter.endDate || undefined}
+              onChange={(e) => updateHistoryFilter('startDate', e.target.value)}
+            />
+            <TextField
+              label="Sampai tanggal"
+              name="historyEndDate"
+              type="date"
+              value={historyFilter.endDate}
+              min={historyFilter.startDate || undefined}
+              onChange={(e) => updateHistoryFilter('endDate', e.target.value)}
+            />
+            {isFiltered && (
+              <button
+                type="button"
+                onClick={() => setHistoryFilter(emptyHistoryFilter)}
+                className="col-span-2 flex items-center justify-center gap-2 rounded-lg border border-gray-300 px-4 py-2.5 text-sm font-medium text-gray-700 hover:bg-gray-50"
+              >
+                <RotateCcw size={16} />
+                Reset
+              </button>
+            )}
+          </div>
+        </div>
+
+        {historyError && (
+          <div className="mb-4">
+            <Alert>{historyError}</Alert>
+          </div>
+        )}
+
+        {isFiltered && !historyLoading && history.length === FILTERED_LIMIT && (
+          <p className="mb-4 rounded-lg bg-amber-50 px-3 py-2 text-sm text-amber-800">
+            Hanya {FILTERED_LIMIT} data terbaru yang ditampilkan. Persempit rentang tanggal untuk
+            melihat data yang lebih lama.
+          </p>
+        )}
+
         {history.length === 0 ? (
-          <p className="text-gray-500">Belum ada riwayat absensi.</p>
+          <p className="text-gray-500">
+            {historyLoading
+              ? 'Memuat riwayat...'
+              : isFiltered
+                ? 'Tidak ada absensi pada rentang tanggal ini.'
+                : 'Belum ada riwayat absensi.'}
+          </p>
         ) : (
-          <div className="overflow-x-auto">
+          <div
+            className={`overflow-x-auto transition-opacity ${historyLoading ? 'opacity-50' : ''}`}
+          >
             <table className="w-full text-left text-sm">
               <thead className="border-b border-gray-200 text-gray-500">
                 <tr>
@@ -255,7 +365,9 @@ export function AttendancePage() {
               <tbody>
                 {history.map((item) => (
                   <tr key={item.id} className="border-b border-gray-100 last:border-0">
-                    <td className="whitespace-nowrap py-3 pr-4">{formatDate(item.attendanceDate)}</td>
+                    <td className="whitespace-nowrap py-3 pr-4">
+                      {formatDate(item.attendanceDate)}
+                    </td>
                     <td className="whitespace-nowrap py-3 pr-4">{formatTime(item.checkInTime)}</td>
                     <td className="max-w-[220px] py-3 pr-4 text-gray-600">
                       {item.latitude !== null && item.longitude !== null ? (
@@ -288,8 +400,9 @@ export function AttendancePage() {
             </table>
           </div>
         )}
+      </section>
 
-              {preview && (
+      {preview && (
         <Modal
           title={`Foto Absensi · ${formatDate(preview.attendanceDate)}`}
           onClose={() => setPreview(null)}
@@ -319,7 +432,6 @@ export function AttendancePage() {
           )}
         </Modal>
       )}
-      </section>
     </div>
   );
 }
