@@ -1,7 +1,8 @@
 import { IsDateString, IsEmail, IsIn, IsNotEmpty, IsOptional, MaxLength } from 'class-validator';
 import type { UserRole } from '../../auth/jwt-payload';
+import { PersonalDataDto } from './personal-data.dto';
 
-export class CreateEmployeeDto {
+export class CreateEmployeeDto extends PersonalDataDto {
   @IsNotEmpty({ message: 'Nama lengkap wajib diisi' })
   @MaxLength(100)
   fullName!: string;

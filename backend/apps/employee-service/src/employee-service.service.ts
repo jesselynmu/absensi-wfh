@@ -10,13 +10,17 @@ const notFound = () =>
     message: 'Data karyawan tidak ditemukan',
   });
 
-const mapDbError = (err: any) =>
-  err?.code === 'ER_DUP_ENTRY'
-    ? new RpcException({
-        statusCode: HttpStatus.CONFLICT,
-        message: 'Email sudah digunakan oleh karyawan lain',
-      })
-    : err;
+const mapDbError = (err: any) => {
+  if (err?.code !== 'ER_DUP_ENTRY') return err;
+
+  const isIdentityNumber = String(err?.sqlMessage).includes('uq_employees_identity_number');
+  return new RpcException({
+    statusCode: HttpStatus.CONFLICT,
+    message: isIdentityNumber
+      ? 'No. KTP sudah terdaftar atas nama karyawan lain'
+      : 'Email sudah digunakan oleh karyawan lain',
+  });
+};
 
 @Injectable()
 export class EmployeeServiceService {

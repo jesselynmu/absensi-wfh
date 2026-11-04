@@ -9,6 +9,13 @@ export interface EmployeeRecord {
   department: string | null;
   position: string | null;
   joinDate: string | null;
+  domicile: string | null;
+  birthPlace: string | null;
+  birthDate: string | null;
+  gender: string | null;
+  maritalStatus: string | null;
+  identityNumber: string | null;
+  npwpNumber: string | null;
   isActive: boolean;
 }
 

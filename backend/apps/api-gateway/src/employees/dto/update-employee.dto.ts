@@ -8,8 +8,9 @@ import {
   MaxLength,
 } from 'class-validator';
 import type { UserRole } from '../../auth/jwt-payload';
+import { PersonalDataDto } from './personal-data.dto';
 
-export class UpdateEmployeeDto {
+export class UpdateEmployeeDto extends PersonalDataDto {
   @IsOptional()
   @IsNotEmpty({ message: 'Nama lengkap tidak boleh kosong' })
   @MaxLength(100)
