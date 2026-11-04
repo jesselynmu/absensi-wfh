@@ -7,7 +7,8 @@ import { PageHeader } from '../components/PageHeader';
 import { PhotoCapture } from '../components/PhotoCapture';
 import { useAuth } from '../context/AuthContext';
 import type { Attendance } from '../types/attendance';
-import { fileUrl, formatDate, formatTime, mapsUrl } from '../utils/format';
+import { SecureImage } from '../components/SecureImage';
+import { attendancePhotoPath, formatDate, formatTime, mapsUrl } from '../utils/format';
 import { describeGeoError, getGeoInfo } from '../utils/location';
 import type { GeoInfo } from '../utils/location';
 import { Modal } from '../components/Modal';
@@ -192,8 +193,8 @@ export function AttendancePage() {
 
           <div className="lg:w-1/2">
             {today ? (
-              <img
-                src={fileUrl(today.photoPath)}
+              <SecureImage
+                path={attendancePhotoPath(today.id)}
                 alt="Foto bukti absensi hari ini"
                 className="aspect-[4/3] w-full rounded-xl object-cover"
               />
@@ -294,8 +295,8 @@ export function AttendancePage() {
           onClose={() => setPreview(null)}
           size="lg"
         >
-          <img
-            src={fileUrl(preview.photoPath)}
+          <SecureImage
+            path={attendancePhotoPath(preview.id)}
             alt="Foto bukti absensi"
             className="w-full rounded-xl object-contain"
           />

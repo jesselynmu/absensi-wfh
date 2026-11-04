@@ -6,16 +6,17 @@ import { Avatar } from '../../components/Avatar';
 import { Badge } from '../../components/Badge';
 import { Modal } from '../../components/Modal';
 import { PageHeader } from '../../components/PageHeader';
+import { SecureImage } from '../../components/SecureImage';
 import { SelectField } from '../../components/SelectField';
 import { TextField } from '../../components/TextField';
 import type { AttendanceWithEmployee } from '../../types/attendance';
 import type { Employee } from '../../types/employee';
 import {
+  attendancePhotoPath,
   daysAgo,
-  fileUrl,
   formatDate,
   formatTime,
-  mapsUrl, // BARU
+  mapsUrl,
   toISODate,
 } from '../../utils/format';
 
@@ -202,11 +203,10 @@ export function AttendanceMonitorPage() {
                         className="group relative block h-12 w-12 overflow-hidden rounded-lg"
                         aria-label="Lihat foto bukti"
                       >
-                        <img
-                          src={fileUrl(item.photoPath)}
+                        <SecureImage
+                          path={attendancePhotoPath(item.id)}
                           alt=""
                           className="h-full w-full object-cover"
-                          loading="lazy"
                         />
                         <span className="absolute inset-0 grid place-items-center bg-black/40 text-white opacity-0 transition group-hover:opacity-100">
                           <Eye size={16} />
@@ -227,8 +227,8 @@ export function AttendanceMonitorPage() {
           onClose={() => setPreview(null)}
           size="lg"
         >
-          <img
-            src={fileUrl(preview.photoPath)}
+          <SecureImage
+            path={attendancePhotoPath(preview.id)}
             alt="Foto bukti absensi"
             className="max-h-[60vh] w-full rounded-xl object-contain"
           />
