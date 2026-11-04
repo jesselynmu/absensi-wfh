@@ -5,7 +5,7 @@
 -- Akun demo:
 --   Admin HRD : admin@company.com  / admin123
 --   Karyawan  : budi@company.com   / karyawan123
---               siti@company.com   / karyawan123
+--               siti@company.com   / karyawan123 (wajib ganti password saat login pertama kali)
 --               andi@company.com   / karyawan123 (nonaktif, tidak bisa login)
 --
 -- Semua data di bawah adalah data fiktif.
@@ -48,20 +48,21 @@ VALUES
 -- employee_id diambil lewat SELECT berdasarkan email,
 -- jadi tidak bergantung pada nilai id auto increment.
 -- -----------------------------------------------------
-INSERT IGNORE INTO users (email, password_hash, role, employee_id, is_active)
-SELECT e.email, s.password_hash, s.role, e.id, e.is_active
+INSERT IGNORE INTO users (email, password_hash, role, employee_id, is_active, must_change_password)
+SELECT e.email, s.password_hash, s.role, e.id, e.is_active, s.must_change_password
 FROM employees e
 JOIN (
   SELECT 'admin@company.com' AS email,
          '$2b$10$s75v8fcOnwdu/nJjtYRsvO9CIilR1KebNfrD.OiNXgLYibxTmprTC' AS password_hash,
-         'ADMIN' AS role
+         'ADMIN' AS role,
+         0 AS must_change_password
   UNION ALL
   SELECT 'budi@company.com',
-         '$2b$10$upU0VdhIYi755UkL8MSxxOXsN6dAPUolytSclmoD1AizyHmve6mhC', 'EMPLOYEE'
+         '$2b$10$upU0VdhIYi755UkL8MSxxOXsN6dAPUolytSclmoD1AizyHmve6mhC', 'EMPLOYEE', 0
   UNION ALL
   SELECT 'siti@company.com',
-         '$2b$10$upU0VdhIYi755UkL8MSxxOXsN6dAPUolytSclmoD1AizyHmve6mhC', 'EMPLOYEE'
+         '$2b$10$upU0VdhIYi755UkL8MSxxOXsN6dAPUolytSclmoD1AizyHmve6mhC', 'EMPLOYEE', 1
   UNION ALL
   SELECT 'andi@company.com',
-         '$2b$10$upU0VdhIYi755UkL8MSxxOXsN6dAPUolytSclmoD1AizyHmve6mhC', 'EMPLOYEE'
+         '$2b$10$upU0VdhIYi755UkL8MSxxOXsN6dAPUolytSclmoD1AizyHmve6mhC', 'EMPLOYEE', 0
 ) AS s ON s.email = e.email;
