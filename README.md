@@ -17,6 +17,7 @@ Aplikasi web untuk absensi Work From Home karyawan dan monitoring oleh HRD. Kary
   - Kode karyawan dibuat otomatis (`EMP001`, `EMP002`, ...) dan tidak bisa diubah
   - Password awal dibuat acak oleh sistem dan hanya ditampilkan satu kali
   - Reset password karyawan
+  - Karyawan wajib mengganti password sementara saat login pertama kali dan setelah password di-reset
   - Data pribadi: domisili, tempat dan tanggal lahir, gender, status pernikahan, No. KTP, dan No. NPWP
 - Monitoring absensi dengan filter tanggal dan karyawan, termasuk melihat foto bukti (view only)
 - Tetap bisa absen untuk dirinya sendiri lewat menu "Absensi Saya"
@@ -28,6 +29,7 @@ Aplikasi web untuk absensi Work From Home karyawan dan monitoring oleh HRD. Kary
 - Admin tidak bisa menghapus, menonaktifkan, atau menurunkan role akunnya sendiri
 - Data absensi tidak memiliki endpoint update atau delete sama sekali
 - Foto absensi tidak bisa dibuka lewat URL langsung. Foto hanya bisa diakses lewat API dengan login: admin dapat melihat semua foto, sedangkan karyawan hanya fotonya sendiri
+- Selama password sementara belum diganti, user hanya bisa membuka halaman Ganti Password. Aturan ini dijaga di frontend (redirect) dan di backend (semua endpoint lain menolak dengan status 403 dan kode `PASSWORD_CHANGE_REQUIRED`)
 
 ## Tech Stack
 
@@ -152,7 +154,7 @@ Tersedia setelah menjalankan `database/seed.sql`.
 | --- | --- | --- | --- |
 | Admin HRD | admin@company.com | admin123 | |
 | Karyawan | budi@company.com | karyawan123 | |
-| Karyawan | siti@company.com | karyawan123 | |
+| Karyawan | siti@company.com | karyawan123 | Wajib ganti password saat login, untuk mencoba fitur tersebut |
 | Karyawan | andi@company.com | karyawan123 | Nonaktif, untuk mencoba penolakan login |
 
 Akun karyawan baru juga bisa dibuat lewat menu **Data Karyawan**. Password awalnya dibuat acak oleh sistem dan ditampilkan satu kali setelah data disimpan.
