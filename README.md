@@ -204,6 +204,5 @@ Beberapa hal yang sengaja disederhanakan untuk keperluan technical test, beserta
   - bucket bisa dibuat **private**, lalu foto diakses lewat *signed URL* yang hanya berlaku beberapa menit, sehingga foto karyawan tidak bisa dibuka oleh siapa pun yang sekadar tahu URL-nya.
 
   Perubahannya cukup di api-gateway (bagian upload). Kolom `photo_path` di database tetap dipakai, hanya isinya berubah dari path lokal menjadi object key di bucket.
-- **Wajib ganti password saat login pertama** dengan password sementara dari HRD.
 - **Database terpisah per service**, sesuai prinsip *database per service* pada microservices. Saat ini ketiga service masih memakai satu database MySQL supaya lebih mudah dijalankan.
 - **Message broker** (misalnya RabbitMQ) sebagai pengganti TCP, supaya komunikasi antar service lebih tahan terhadap gangguan.
