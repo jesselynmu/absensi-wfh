@@ -118,8 +118,8 @@ Kalau memakai MySQL Workbench, DBeaver, atau phpMyAdmin, buka dan jalankan kedua
 ### 3. Atur environment
 
 ```bash
-cp backend/.env
-cp frontend/.env
+cp backend/.env.example backend/.env 
+cp frontend/.env.example frontend/.env
 ```
 
 Lalu isi kredensial MySQL di `backend/.env`.
