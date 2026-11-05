@@ -87,8 +87,6 @@ AbsensiWFH/
 └── package.json              # script untuk menjalankan backend dan frontend sekaligus
 ```
 
-<!-- CEK: sesuaikan dengan struktur folder sebenarnya -->
-
 ## Cara Menjalankan
 
 ### Prasyarat
@@ -120,13 +118,11 @@ Kalau memakai MySQL Workbench, DBeaver, atau phpMyAdmin, buka dan jalankan kedua
 ### 3. Atur environment
 
 ```bash
-cp backend/.env.example backend/.env
-cp frontend/.env.example frontend/.env
+cp backend/.env
+cp frontend/.env
 ```
 
 Lalu isi kredensial MySQL di `backend/.env`.
-
-<!-- CEK: pastikan frontend punya .env.example; kalau tidak, hapus baris kedua -->
 
 ### 4. Install dependency
 
